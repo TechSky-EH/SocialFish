@@ -20,4 +20,4 @@ def head():
                      '       '      '       Site: https://www.undeadsec.com
                        ' .  '
                            ''')
-    print(colorama.Fore.GREEN + 'Go to http://0.0.0.0:5000/neptune to start')
+    print(colorama.Fore.GREEN + 'Go to http://127.0.0.1:5000/neptune to start')

