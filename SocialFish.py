@@ -444,7 +444,7 @@ def getLogin():
             return render_template('default.html')
         
         # Handle default URL
-        elif url == 'https://github.com/UndeadSec/SocialFish':
+        elif url == 'https://github.com/techsky-eh/SocialFish':
             return render_template('default.html')
         
         # Handle custom mode
@@ -685,8 +685,8 @@ def echo():
         if 'http://' not in red and 'https://' not in red:
             red = 'http://' + red
     else:
-        url = 'https://github.com/UndeadSec/SocialFish'
-        red = 'https://github.com/UndeadSec/SocialFish'
+        url = 'https://github.com/techsky-eh/SocialFish'
+        red = 'https://github.com/techsky-eh/SocialFish'
     cur = g.db
     cur.execute("UPDATE socialfish SET attacks = attacks + 1 where id = 1")
     g.db.commit()
@@ -930,7 +930,7 @@ def postConfigureApi():
                 if 'http://' not in red and 'https://' not in red:
                     red = 'http://' + red
             else:
-                red = 'https://github.com/UndeadSec/SocialFish'
+                red = 'https://github.com/techsky-eh/SocialFish'
             cur = g.db
             cur.execute("UPDATE socialfish SET attacks = attacks + 1 where id = 1")
             g.db.commit()

@@ -18,6 +18,6 @@ def head():
                '  .  .  .  .  . '.    .'              '  .
                    '         '    '. '      Twitter: https://twitter.com/UndeadSec
                      '       '      '       Site: https://www.undeadsec.com
-                       ' .  '
+                       ' .  '               YouTube: https://www.youtube.com/@TechSky-EH
                            ''')
     print(colorama.Fore.GREEN + 'Go to http://127.0.0.1:5000/neptune to start')

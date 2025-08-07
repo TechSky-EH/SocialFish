@@ -5,8 +5,8 @@ COMPRESS_MIN_SIZE = 500
 # ---------------------------------------------------------------------------------------------------------------
 # LOCAL CONFIGS--------------------------------------------------------------------------------------------------
 DATABASE = "./database.db"
-url = 'https://github.com/UndeadSec/SocialFish'
-red = 'https://github.com/UndeadSec/SocialFish'
+url = 'https://github.com/techsky-eh/SocialFish'
+red = 'https://github.com/techsky-eh/SocialFish'
 sta = 'x'
 APP_SECRET_KEY = '<CHANGE ME SF>'
 # ---------------------------------------------------------------------------------------------------------------

