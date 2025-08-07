@@ -14,7 +14,7 @@ def head():
        ██ ██    ██ ██      ██ ██   ██ ██       ██      ██      ██ ██   ██ 
   ███████ ████████ ███████ ██ ██   ██ ███████  ██      ██ ███████ ██   ██ 
       .    '   '....'               ..'.      ' .
-         '  .                     .     '          '     '  v3.0Nepture
+         '  .                     .     '          '     '  v4.0Nepture
                '  .  .  .  .  . '.    .'              '  .
                    '         '    '. '      Twitter: https://twitter.com/UndeadSec
                      '       '      '       Site: https://www.undeadsec.com
